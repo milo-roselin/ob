@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#07111f" />
+  <title>Secret Speech Translator</title>
+  <style>
+    :root {
+      --bg1:#07111f;
+      --bg2:#0f1d33;
+      --card:rgba(15,29,51,.88);
+      --card2:#15253f;
+      --text:#f8fbff;
+      --muted:#9eb0c8;
+      --accent:#56c7ff;
+      --green:#33d17a;
+      --red:#ff5d73;
+      --purple:#a78bfa;
+      --orange:#fb923c;
+      --border:rgba(255,255,255,.11);
+      --shadow:0 20px 60px rgba(0,0,0,.32);
+    }
+
+    * { box-sizing:border-box; }
+    html { -webkit-text-size-adjust:100%; }
+    body {
+      margin:0;
+      min-height:100vh;
+      color:var(--text);
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(86,199,255,.17), transparent 38%),
+        radial-gradient(circle at 100% 20%, rgba(167,139,250,.13), transparent 36%),
+        linear-gradient(180deg,var(--bg2),var(--bg1));
+      padding:18px 14px 45px;
+    }
+
+    .app { width:min(920px,100%); margin:auto; }
+    h1 {
+      margin:4px 0 4px;
+      font-size:clamp(32px,7vw,58px);
+      line-height:1;
+      letter-spacing:-2px;
+      text-align:center;
+    }
+    .subtitle {
+      text-align:center;
+      color:var(--muted);
+      margin:10px auto 22px;
+      max-width:650px;
+      line-height:1.4;
+    }
+
+    .card {
+      background:var(--card);
+      backdrop-filter:blur(12px);
+      -webkit-backdrop-filter:blur(12px);
+      border:1px solid var(--border);
+      border-radius:24px;
+      padding:18px;
+      box-shadow:var(--shadow);
+      margin-bottom:16px;
+    }
+
+    .section-title {
+      font-size:13px;
+      text-transform:uppercase;
+      letter-spacing:.1em;
+      color:var(--muted);
+      font-weight:800;
+      margin-bottom:12px;
+    }
+
+    .mode-grid {
+      display:grid;
+      grid-template-columns:repeat(5,1fr);
+      gap:10px;
+    }
+
+    .mode-btn {
+      border:1px solid var(--border);
+      background:var(--card2);
+      color:var(--text);
+      min-height:76px;
+      border-radius:17px;
+      padding:10px 8px;
+      font-size:15px;
+      font-weight:850;
+      cursor:pointer;
+      transition:.16s ease;
+      touch-action:manipulation;
+    }
+    .mode-btn span {
+      display:block;
+      font-size:23px;
+      margin-bottom:5px;
+    }
+    .mode-btn.active {
+      border-color:var(--accent);
+      box-shadow:0 0 0 2px rgba(86,199,255,.18) inset;
+      background:rgba(86,199,255,.13);
+      transform:translateY(-1px);
+    }
+
+    .auto-row {
+      margin-top:12px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      flex-wrap:wrap;
+    }
+
+    .switch {
+      display:flex;
+      align-items:center;
+      gap:10px;
+      color:var(--muted);
+      font-size:14px;
+      font-weight:700;
+    }
+    .switch input { width:22px; height:22px; accent-color:var(--accent); }
+
+    .detected {
+      font-size:13px;
+      color:#bfeaff;
+      background:rgba(86,199,255,.1);
+      border:1px solid rgba(86,199,255,.18);
+      padding:7px 10px;
+      border-radius:999px;
+    }
+
+    .mic-zone {
+      text-align:center;
+      padding:8px 0 2px;
+    }
+
+    .mic-wrap {
+      width:160px;
+      height:160px;
+      margin:4px auto 12px;
+      position:relative;
+      display:grid;
+      place-items:center;
+    }
+
+    .ring, .ring2 {
+      position:absolute;
+      inset:0;
+      border-radius:50%;
+      border:2px solid rgba(86,199,255,.18);
+    }
+    .ring2 { inset:16px; }
+
+    .mic-button {
+      width:112px;
+      height:112px;
+      border:none;
+      border-radius:50%;
+      background:linear-gradient(145deg,#69d2ff,#2ca9ed);
+      color:#042238;
+      font-size:44px;
+      box-shadow:0 15px 38px rgba(44,169,237,.32);
+      cursor:pointer;
+      z-index:2;
+      touch-action:manipulation;
+      transition:transform .12s ease;
+    }
+    .mic-button:active { transform:scale(.96); }
+
+    .listening .ring {
+      animation:pulse 1.2s infinite ease-out;
+      border-color:rgba(255,93,115,.55);
+    }
+    .listening .ring2 {
+      animation:pulse 1.2s .25s infinite ease-out;
+      border-color:rgba(255,93,115,.4);
+    }
+    .listening .mic-button {
+      background:linear-gradient(145deg,#ff7588,#ff4d66);
+      color:white;
+      box-shadow:0 15px 42px rgba(255,77,102,.34);
+    }
+
+    @keyframes pulse {
+      0% { transform:scale(.8); opacity:.9; }
+      100% { transform:scale(1.25); opacity:0; }
+    }
+
+    .mic-label {
+      font-size:18px;
+      font-weight:850;
+      margin-bottom:5px;
+    }
+    .status {
+      color:var(--muted);
+      min-height:23px;
+      font-size:14px;
+    }
+
+    textarea {
+      width:100%;
+      min-height:105px;
+      resize:vertical;
+      background:#0c192c;
+      color:var(--text);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:14px;
+      font:inherit;
+      font-size:18px;
+      line-height:1.45;
+      outline:none;
+    }
+    textarea:focus { border-color:var(--accent); }
+
+    .action-row {
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+      margin-top:10px;
+    }
+
+    .action {
+      border:0;
+      border-radius:15px;
+      min-height:52px;
+      padding:10px 14px;
+      font-size:16px;
+      font-weight:850;
+      cursor:pointer;
+      touch-action:manipulation;
+    }
+    .primary { background:var(--accent); color:#042238; }
+    .secondary { background:#263955; color:white; }
+
+    .result {
+      min-height:100px;
+      font-size:clamp(27px,6vw,44px);
+      font-weight:900;
+      line-height:1.2;
+      overflow-wrap:anywhere;
+    }
+    .placeholder { color:#5f7695; }
+
+    .result-meta {
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:center;
+      margin-bottom:10px;
+      flex-wrap:wrap;
+    }
+    .pill {
+      color:#bfeaff;
+      background:rgba(86,199,255,.11);
+      border:1px solid rgba(86,199,255,.18);
+      border-radius:999px;
+      padding:6px 10px;
+      font-size:12px;
+      font-weight:850;
+      letter-spacing:.04em;
+    }
+
+    .history-head {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:10px;
+    }
+    .small-btn {
+      background:transparent;
+      border:1px solid var(--border);
+      color:var(--muted);
+      border-radius:12px;
+      padding:8px 11px;
+      font-weight:750;
+      cursor:pointer;
+    }
+    .history {
+      display:grid;
+      gap:10px;
+    }
+    .history-empty {
+      color:var(--muted);
+      text-align:center;
+      padding:20px 8px;
+    }
+    .history-item {
+      background:#0c192c;
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:12px 13px;
+    }
+    .history-top {
+      display:flex;
+      justify-content:space-between;
+      gap:8px;
+      align-items:center;
+      margin-bottom:7px;
+    }
+    .history-mode {
+      font-size:12px;
+      color:#bfeaff;
+      font-weight:850;
+    }
+    .history-time {
+      font-size:12px;
+      color:#7287a3;
+    }
+    .history-heard {
+      color:var(--muted);
+      font-size:14px;
+      margin-bottom:4px;
+    }
+    .history-result {
+      font-size:19px;
+      font-weight:800;
+    }
+
+    .notice {
+      color:var(--muted);
+      line-height:1.48;
+      font-size:14px;
+    }
+    .notice strong { color:white; }
+
+    @media (max-width:760px) {
+      .mode-grid { grid-template-columns:repeat(2,1fr); }
+      .mode-btn:last-child { grid-column:1 / -1; }
+    }
+    @media (max-width:480px) {
+      body { padding-top:11px; }
+      .card { border-radius:20px; padding:15px; }
+      .action-row { grid-template-columns:1fr; }
+      .mic-wrap { width:145px; height:145px; }
+      .mic-button { width:102px; height:102px; }
+    }
+  </style>
+</head>
+<body>
+<main class="app">
+  <h1>Secret Speech Translator</h1>
+  <div class="subtitle">Choose a language or let the app guess it. Tap the microphone, speak, and see the decoded English.</div>
+
+  <section class="card">
+    <div class="section-title">Language</div>
+    <div class="mode-grid" id="modeGrid">
+      <button class="mode-btn active" data-mode="ob"><span>🅾️</span>Ob</button>
+      <button class="mode-btn" data-mode="pig"><span>🐷</span>Pig Latin</button>
+      <button class="mode-btn" data-mode="ubbi"><span>🔵</span>Ubbi Dubbi</button>
+      <button class="mode-btn" data-mode="rovar"><span>🕵️</span>Rövarspråket</button>
+      <button class="mode-btn" data-mode="normal"><span>💬</span>Normal</button>
+    </div>
+
+    <div class="auto-row">
+      <label class="switch">
+        <input type="checkbox" id="autoDetect">
+        Automatically detect and switch language
+      </label>
+      <div class="detected" id="detectedLabel">Selected: Ob</div>
+    </div>
+  </section>
+
+  <section class="card mic-zone" id="micZone">
+    <div class="mic-wrap">
+      <div class="ring"></div>
+      <div class="ring2"></div>
+      <button class="mic-button" id="micBtn" aria-label="Start listening">🎤</button>
+    </div>
+    <div class="mic-label" id="micLabel">Tap to Listen</div>
+    <div class="status" id="status">Ready</div>
+  </section>
+
+  <section class="card">
+    <div class="section-title">What the app heard</div>
+    <textarea id="heard" placeholder="Speech appears here. You can also type or fix the words manually."></textarea>
+    <div class="action-row">
+      <button class="action primary" id="translateBtn">Translate</button>
+      <button class="action secondary" id="clearInputBtn">Clear Input</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="result-meta">
+      <div class="section-title" style="margin:0">Translation</div>
+      <div class="pill" id="resultMode">OB → ENGLISH</div>
+    </div>
+    <div class="result placeholder" id="result">Your translation will appear here.</div>
+  </section>
+
+  <section class="card">
+    <div class="history-head">
+      <div class="section-title" style="margin:0">Conversation History</div>
+      <button class="small-btn" id="clearHistoryBtn">Clear History</button>
+    </div>
+    <div class="history" id="history">
+      <div class="history-empty">No translations yet.</div>
+    </div>
+  </section>
+
+  <section class="card notice">
+    <strong>Important:</strong> browser speech recognition sometimes tries to “correct” made-up words such as Ob or Pig Latin into normal English. If that happens, edit the text in “What the app heard” and tap Translate. Automatic language detection is a best guess based on the syllable patterns it hears.
+  </section>
+</main>
+
+<script>
+(() => {
+  const modeButtons = [...document.querySelectorAll('.mode-btn')];
+  const autoDetect = document.getElementById('autoDetect');
+  const detectedLabel = document.getElementById('detectedLabel');
+  const micZone = document.getElementById('micZone');
+  const micBtn = document.getElementById('micBtn');
+  const micLabel = document.getElementById('micLabel');
+  const status = document.getElementById('status');
+  const heard = document.getElementById('heard');
+  const translateBtn = document.getElementById('translateBtn');
+  const clearInputBtn = document.getElementById('clearInputBtn');
+  const result = document.getElementById('result');
+  const resultMode = document.getElementById('resultMode');
+  const historyEl = document.getElementById('history');
+  const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+
+  let selectedMode = 'ob';
+  let recognition = null;
+  let listening = false;
+  let history = [];
+
+  const modeNames = {
+    ob:'Ob',
+    pig:'Pig Latin',
+    ubbi:'Ubbi Dubbi',
+    rovar:'Rövarspråket',
+    normal:'Normal'
+  };
+
+  function setMode(mode, detected=false) {
+    selectedMode = mode;
+    modeButtons.forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    detectedLabel.textContent = (detected ? 'Detected: ' : 'Selected: ') + modeNames[mode];
+    resultMode.textContent = mode === 'normal'
+      ? 'NORMAL SPEECH'
+      : modeNames[mode].toUpperCase() + ' → ENGLISH';
+  }
+
+  modeButtons.forEach(btn => {
+    btn.addEventListener('click', () => setMode(btn.dataset.mode));
+  });
+
+  function preserveCase(original, replacement) {
+    if (!original) return replacement;
+    if (original === original.toUpperCase()) return replacement.toUpperCase();
+    if (original[0] === original[0].toUpperCase()) {
+      return replacement.charAt(0).toUpperCase() + replacement.slice(1).toLowerCase();
+    }
+    return replacement.toLowerCase();
+  }
+
+  function transformWords(text, fn) {
+    return text.replace(/[A-Za-zÀ-ÖØ-öø-ÿ']+/g, w => fn(w));
+  }
+
+  function decodeObWord(word) {
+    return preserveCase(word, word.replace(/ob(?=[aeiou])/gi, ''));
+  }
+
+  function decodeUbbiWord(word) {
+    return preserveCase(word, word.replace(/ub(?=[aeiou])/gi, ''));
+  }
+
+  function decodeRovarWord(word) {
+    const decoded = word.toLowerCase().replace(/([bcdfghjklmnpqrstvwxyz])o\1/gi, '$1');
+    return preserveCase(word, decoded);
+  }
+
+  const commonClusters = [
+    'str','spr','scr','spl','shr','thr','sch',
+    'ch','sh','th','ph','wh','qu','tr','dr','br','cr','fr','gr','pr',
+    'bl','cl','fl','gl','pl','sl','sk','sm','sn','sp','st','sw',
+    'b','c','d','f','g','h','j','k','l','m','n','p','q','r','s','t','v','w','x','y','z'
+  ];
+
+  const commonWords = new Set([
+    'hello','there','how','are','you','what','where','when','why','who',
+    'the','this','that','we','they','he','she','it','is','am','was','were',
+    'be','been','have','has','had','do','does','did','can','could','will',
+    'would','should','go','come','want','like','yes','no','please','thanks',
+    'thank','good','bad','day','night','morning','friend','school','house',
+    'home','dog','cat','fish','food','water','game','secret','language',
+    'pig','latin','english','translate','translator','my','your','our',
+    'their','to','from','in','on','at','for','with','and','or','but','not',
+    'me','him','her','us','them','today','tomorrow','yesterday','really',
+    'think','know','going','doing','make','made','get','got','see','say'
+  ]);
+
+  function englishishScore(word) {
+    let s = 0;
+    if (/^[a-z]+$/i.test(word)) s += 1;
+    if (/[aeiou]/i.test(word)) s += 2;
+    if (!/^[^aeiou]{5,}/i.test(word)) s += 2;
+    if (!/[^aeiou]{5,}$/i.test(word)) s += 2;
+    if (commonWords.has(word.toLowerCase())) s += 25;
+    return s;
+  }
+
+  function decodePigWord(word) {
+    const original = word;
+    const lower = word.toLowerCase();
+
+    if (lower.endsWith('way') && lower.length > 3) {
+      return preserveCase(original, lower.slice(0,-3));
+    }
+    if (lower.endsWith('yay') && lower.length > 3) {
+      return preserveCase(original, lower.slice(0,-3));
+    }
+    if (!lower.endsWith('ay') || lower.length < 3) return original;
+
+    const stem = lower.slice(0,-2);
+    const candidates = [{word:stem, score:englishishScore(stem)}];
+
+    for (const c of commonClusters) {
+      if (stem.endsWith(c) && stem.length > c.length) {
+        const candidate = c + stem.slice(0,-c.length);
+        candidates.push({
+          word:candidate,
+          score:englishishScore(candidate) + Math.min(c.length,3) * .25
+        });
+      }
+    }
+    candidates.sort((a,b) => b.score-a.score);
+    return preserveCase(original, candidates[0].word);
+  }
+
+  function translateText(text, mode) {
+    if (mode === 'ob') return transformWords(text, decodeObWord);
+    if (mode === 'ubbi') return transformWords(text, decodeUbbiWord);
+    if (mode === 'rovar') return transformWords(text, decodeRovarWord);
+    if (mode === 'pig') return transformWords(text, decodePigWord);
+    return text;
+  }
+
+  function countMatches(text, regex) {
+    const m = text.match(regex);
+    return m ? m.length : 0;
+  }
+
+  function detectLanguage(text) {
+    const t = text.toLowerCase();
+    const wordCount = Math.max(1, (t.match(/[a-z']+/g) || []).length);
+
+    const scores = {
+      ob: countMatches(t, /ob(?=[aeiou])/g) * 3.2,
+      ubbi: countMatches(t, /ub(?=[aeiou])/g) * 3.2,
+      rovar: countMatches(t, /([bcdfghjklmnpqrstvwxyz])o\1/g) * 3.6,
+      pig: 0,
+      normal: 1.2
+    };
+
+    const pigWords = t.match(/\b[a-z]+(?:ay|way|yay)\b/g) || [];
+    scores.pig += pigWords.length * 2.7;
+
+    // Require some evidence before auto-selecting a secret language.
+    const entries = Object.entries(scores).sort((a,b) => b[1]-a[1]);
+    const [bestMode, bestScore] = entries[0];
+
+    if (bestMode !== 'normal' && bestScore >= 2.7) return bestMode;
+    return 'normal';
+  }
+
+  function addHistory(heardText, translated, mode) {
+    if (!heardText.trim()) return;
+    history.unshift({
+      heard: heardText,
+      result: translated,
+      mode,
+      time: new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})
+    });
+    history = history.slice(0,30);
+    renderHistory();
+  }
+
+  function renderHistory() {
+    if (!history.length) {
+      historyEl.innerHTML = '<div class="history-empty">No translations yet.</div>';
+      return;
+    }
+
+    historyEl.innerHTML = history.map(item => `
+      <div class="history-item">
+        <div class="history-top">
+          <div class="history-mode">${escapeHtml(modeNames[item.mode])}</div>
+          <div class="history-time">${escapeHtml(item.time)}</div>
+        </div>
+        <div class="history-heard">Heard: ${escapeHtml(item.heard)}</div>
+        <div class="history-result">${escapeHtml(item.result)}</div>
+      </div>
+    `).join('');
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replaceAll('&','&amp;')
+      .replaceAll('<','&lt;')
+      .replaceAll('>','&gt;')
+      .replaceAll('"','&quot;')
+      .replaceAll("'","&#039;");
+  }
+
+  function doTranslate(save=true) {
+    const text = heard.value.trim();
+    if (!text) {
+      result.textContent = 'Your translation will appear here.';
+      result.classList.add('placeholder');
+      return;
+    }
+
+    let mode = selectedMode;
+    if (autoDetect.checked) {
+      mode = detectLanguage(text);
+      setMode(mode, true);
+    }
+
+    const translated = translateText(text, mode);
+    result.textContent = translated;
+    result.classList.remove('placeholder');
+
+    if (save) addHistory(text, translated, mode);
+  }
+
+  translateBtn.addEventListener('click', () => doTranslate(true));
+
+  clearInputBtn.addEventListener('click', () => {
+    heard.value = '';
+    result.textContent = 'Your translation will appear here.';
+    result.classList.add('placeholder');
+    status.textContent = 'Ready';
+  });
+
+  clearHistoryBtn.addEventListener('click', () => {
+    history = [];
+    renderHistory();
+  });
+
+  function buildRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return null;
+
+    const r = new SpeechRecognition();
+    r.lang = 'en-US';
+    r.continuous = false;
+    r.interimResults = true;
+    r.maxAlternatives = 3;
+
+    let finalText = '';
+
+    r.onstart = () => {
+      finalText = '';
+      listening = true;
+      micZone.classList.add('listening');
+      micBtn.textContent = '■';
+      micLabel.textContent = 'Listening…';
+      status.textContent = 'Speak clearly';
+    };
+
+    r.onresult = event => {
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) finalText += transcript + ' ';
+        else interim += transcript;
+      }
+
+      heard.value = (finalText + interim).trim();
+
+      if (autoDetect.checked && heard.value.trim()) {
+        const guess = detectLanguage(heard.value);
+        setMode(guess, true);
+      }
+
+      // Live preview without adding a history item for every partial phrase.
+      const preview = translateText(heard.value, selectedMode);
+      if (preview) {
+        result.textContent = preview;
+        result.classList.remove('placeholder');
+      }
+    };
+
+    r.onerror = event => {
+      const map = {
+        'not-allowed':'Microphone permission was denied.',
+        'audio-capture':'No microphone was found.',
+        'no-speech':'No speech detected. Tap the mic and try again.',
+        'network':'Speech recognition had a network problem.'
+      };
+      status.textContent = map[event.error] || ('Speech error: ' + event.error);
+    };
+
+    r.onend = () => {
+      listening = false;
+      micZone.classList.remove('listening');
+      micBtn.textContent = '🎤';
+      micLabel.textContent = 'Tap to Listen';
+
+      if (heard.value.trim()) {
+        doTranslate(true);
+        status.textContent = 'Finished';
+      } else if (!status.textContent.includes('denied') &&
+                 !status.textContent.includes('problem') &&
+                 !status.textContent.includes('detected')) {
+        status.textContent = 'Ready';
+      }
+    };
+
+    return r;
+  }
+
+  recognition = buildRecognition();
+
+  micBtn.addEventListener('click', () => {
+    if (!recognition) {
+      status.textContent = 'Speech recognition is not available in this browser. Type text below instead.';
+      return;
+    }
+    if (listening) {
+      recognition.stop();
+      return;
+    }
+    try {
+      recognition.start();
+    } catch {
+      status.textContent = 'Could not start the microphone. Try again.';
+    }
+  });
+
+  autoDetect.addEventListener('change', () => {
+    if (autoDetect.checked && heard.value.trim()) {
+      setMode(detectLanguage(heard.value), true);
+    } else {
+      detectedLabel.textContent = 'Selected: ' + modeNames[selectedMode];
+    }
+  });
+
+  setMode('ob');
+  renderHistory();
+})();
+</script>
+</body>
+</html>
