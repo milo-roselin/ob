@@ -1,5 +1,0 @@
-services:
-  - type: web
-    name: secret-speech-translator
-    runtime: static
-    staticPublishPath: .
