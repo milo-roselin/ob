@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: translator
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
