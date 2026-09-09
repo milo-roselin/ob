@@ -1,0 +1,3807 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#07111f">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://huggingface.co" crossorigin>
+<link rel="dns-prefetch" href="//cdn.jsdelivr.net">
+<link rel="dns-prefetch" href="//huggingface.co">
+<title>Secret Translator</title>
+<style>
+:root{
+  --bg:#07111f;--card:#111e33;--card2:#172842;--text:#fff;--muted:#9db0ca;
+  --accent:#57c8ff;--red:#ff5d73;--green:#63e6a3;--yellow:#ffd66b;--line:rgba(255,255,255,.1)
+}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{
+  margin:0;padding:14px;color:var(--text);
+  background:linear-gradient(#10203a,#07111f);
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif
+}
+.app{width:min(900px,100%);margin:auto}
+h1{text-align:center;font-size:clamp(34px,7vw,58px);line-height:1;margin:12px 0 22px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:16px;margin-bottom:13px}
+.label{font-size:12px;letter-spacing:.09em;text-transform:uppercase;font-weight:850;color:var(--muted);margin-bottom:10px}
+.language-controls{display:flex;gap:9px;align-items:stretch}.modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;flex:1;min-width:0}.reverse-toggle{min-width:132px;background:var(--card2);border:1px solid var(--line);border-radius:15px;color:#fff;font-weight:900;font-size:14px;padding:9px 14px;cursor:pointer;touch-action:manipulation}.reverse-toggle.active{border-color:var(--accent);background:rgba(87,200,255,.14)}.reverse-toggle b{display:block;font-size:23px}@media(max-width:560px){.language-controls{flex-direction:column}.reverse-toggle{width:100%;min-height:52px}}
+.mode{
+  min-height:70px;background:var(--card2);border:1px solid var(--line);border-radius:15px;color:#fff;
+  font-weight:850;font-size:15px;padding:9px;position:relative;cursor:pointer;touch-action:manipulation
+}
+.mode.active{border-color:var(--accent);background:rgba(87,200,255,.14);box-shadow:0 0 0 1px rgba(87,200,255,.12) inset}
+.mode b{display:block;font-size:23px}
+.custom-wrap{position:relative}
+.delete-mini{position:absolute;right:5px;top:5px;width:25px;height:25px;border:0;border-radius:50%;background:rgba(255,255,255,.1);color:#fff;font-size:14px;z-index:2}
+.micarea{text-align:center}
+.micwrap{width:150px;height:150px;margin:auto;display:grid;place-items:center;position:relative}
+.ring{position:absolute;inset:6px;border-radius:50%;border:2px solid rgba(87,200,255,.2)}
+.mic{
+  position:relative;z-index:2;width:104px;height:104px;border:0;border-radius:50%;font-size:42px;
+  background:var(--accent);cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent
+}
+.listening .mic{background:var(--red);color:#fff}
+.listening .ring{border-color:var(--red);animation:pulse 1.05s infinite}
+@keyframes pulse{to{transform:scale(1.25);opacity:0}}
+.status{text-align:center;color:var(--muted);font-size:14px;min-height:22px;margin-top:4px}
+.progress{height:8px;background:#0b1729;border:1px solid var(--line);border-radius:999px;overflow:hidden;margin:10px auto 0;max-width:420px}
+.progress>div{height:100%;width:0;background:var(--accent);transition:width .28s cubic-bezier(.2,.8,.2,1)}
+.hidden{display:none!important}
+textarea{
+  width:100%;min-height:100px;resize:vertical;background:#0b1729;color:#fff;border:1px solid var(--line);
+  border-radius:14px;padding:12px;font:inherit;font-size:17px
+}
+.btn{
+  width:100%;min-height:49px;border:0;border-radius:13px;background:var(--accent);
+  font-weight:900;font-size:16px;margin-top:9px;cursor:pointer;touch-action:manipulation
+}
+.secondary{background:var(--card2);color:#fff;border:1px solid var(--line)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.result{font-weight:900;font-size:clamp(26px,6vw,42px);line-height:1.18;overflow-wrap:anywhere}
+.heard{color:var(--muted);font-size:16px;overflow-wrap:anywhere;white-space:pre-wrap}
+.pill{display:inline-block;background:rgba(87,200,255,.1);color:#bfeaff;border:1px solid rgba(87,200,255,.2);padding:6px 10px;border-radius:999px;font-size:12px;font-weight:850;margin-bottom:8px}
+.confidence{color:var(--green);font-weight:850;font-size:13px;margin-top:8px}
+.crack-card{border-color:rgba(99,230,163,.25)}
+.rulebox{background:#0b1729;border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:10px}
+.rule-title{font-weight:900;margin-bottom:5px}
+.note{color:var(--muted);font-size:13px;line-height:1.45}
+details.debug{margin-top:10px;color:var(--muted);font-size:12px}
+details.debug pre{white-space:pre-wrap;word-break:break-word;background:#0b1729;padding:10px;border-radius:10px}
+@media(max-width:520px){.modes{grid-template-columns:1fr 1fr}}
+@media(max-width:360px),(max-height:430px) and (max-width:500px){
+  body{padding:6px}h1{font-size:23px;margin:5px 0 10px}.card{border-radius:14px;padding:8px;margin-bottom:6px}
+  .label{font-size:9px;margin-bottom:5px}.mode{min-height:47px;font-size:11px;border-radius:10px;padding:4px}.mode b{font-size:16px}
+  .micwrap{width:88px;height:88px}.mic{width:62px;height:62px;font-size:26px}.status{font-size:10px}.progress{height:5px}
+  .btn{min-height:38px;font-size:12px;margin-top:5px}.result{font-size:19px}.heard{font-size:11px}.pill{font-size:8px;padding:3px 6px}
+  .row{grid-template-columns:1fr}textarea{min-height:62px;font-size:13px;padding:7px}
+}
+</style>
+</head>
+<body>
+<main class="app">
+  <h1>Secret Translator</h1>
+
+  <section class="card">
+    <div class="label">Language</div>
+    <div class="language-controls">
+      <div class="modes" id="modes">
+        <button class="mode active" data-mode="ob"><b>🅾️</b>Ob</button>
+        <button class="mode" data-mode="crack"><b>🧩</b>Crack New</button>
+      </div>
+      <button class="reverse-toggle" id="reverseBtn" type="button" aria-pressed="false"><b>🔁</b><span id="reverseText">Reverse</span></button>
+    </div>
+  </section>
+
+  <section class="card crack-card hidden" id="crackPanel">
+    <div class="label">Crack a new language</div>
+    <textarea id="crackInput" placeholder="Record or type several examples. Letters, numbers, and mixed codes all work."></textarea>
+    <button class="btn" id="crackBtn">Analyze & Create Language</button>
+  </section>
+
+  <section class="card micarea" id="micarea">
+    <div class="micwrap"><div class="ring"></div><button class="mic" id="mic" aria-label="Record">🎤</button></div>
+    <div class="status" id="status"></div>
+    <div class="progress hidden" id="progress"><div id="progressBar"></div></div>
+  </section>
+
+  <section class="card">
+    <div class="label" id="inputLabel">Type Ob or use the microphone</div>
+    <textarea id="input" placeholder="Example: hobellobo"></textarea>
+    <div class="row">
+      <button class="btn" id="translate">Translate</button>
+      <button class="btn secondary" id="clear">Clear</button>
+    </div>
+  </section>
+<section class="card">
+    <div class="pill" id="pill">WAITING</div>
+    <div class="label" id="resultLabel">English translation</div>
+    <div class="result" id="result">—</div>
+  </section>
+
+  <section class="card hidden" id="learnCard">
+    <div class="label">Adaptive microphone</div>
+    <div class="note" id="learnNote">Corrections teach only that specific word. A learned word must closely match the new sound before it can be used.</div>
+    <div class="row">
+      <button class="btn secondary" id="correctBtn">✓ Correct</button>
+      <button class="btn secondary" id="fixBtn">✏️ Fix & teach</button>
+    </div>
+    <div id="fixPanel" class="hidden">
+      <textarea id="fixInput" placeholder="Type what you actually said in English"></textarea>
+      <button class="btn" id="teachBtn">Teach microphone</button>
+    </div>
+<div class="note" id="learnStats"></div>
+  </section>
+
+  <section class="card hidden" id="customInfoCard">
+    <div class="label">Cracked language</div>
+    <div class="rulebox">
+      <div class="rule-title" id="customRuleTitle"></div>
+      <div class="confidence" id="customConfidence"></div>
+      <div class="note" id="customDetails"></div>
+    </div>
+    <button class="btn secondary" id="addInfoBtn">+ Add Info</button>
+    <div id="addInfoPanel" class="hidden">
+      <textarea id="addInfoInput" placeholder="Add more examples so this cracked language can improve."></textarea>
+      <button class="btn" id="improveBtn">Use New Info</button>
+    </div>
+  </section>
+
+  <details class="debug card hidden" id="debug">
+    <summary>Recognition details</summary>
+    <pre id="debugText"></pre>
+  </details>
+</main>
+
+<script src="phoneme-lexicon.js"></script>
+<script type="module">
+const $=id=>document.getElementById(id);
+const input=$('input'),result=$('result'),statusEl=$('status'),pill=$('pill'),
+mic=$('mic'),micarea=$('micarea'),progress=$('progress'),progressBar=$('progressBar'),
+modesEl=$('modes'),crackPanel=$('crackPanel'),crackInput=$('crackInput'),crackBtn=$('crackBtn'),
+customInfoCard=$('customInfoCard'),customRuleTitle=$('customRuleTitle'),
+customConfidence=$('customConfidence'),customDetails=$('customDetails'),addInfoBtn=$('addInfoBtn'),
+addInfoPanel=$('addInfoPanel'),addInfoInput=$('addInfoInput'),improveBtn=$('improveBtn'),
+debug=$('debug'),debugText=$('debugText'),
+reverseBtn=$('reverseBtn'),reverseText=$('reverseText'),
+inputLabel=$('inputLabel'),resultLabel=$('resultLabel'),translateBtn=$('translate'),
+learnCard=$('learnCard'),learnNote=$('learnNote'),correctBtn=$('correctBtn'),fixBtn=$('fixBtn'),
+fixPanel=$('fixPanel'),fixInput=$('fixInput'),teachBtn=$('teachBtn'),
+learnStats=$('learnStats');
+
+let selectedMode='ob';
+let direction='decode'; // decode: Ob/code → English; encode: English → Ob/code
+let recognitionTarget=input;
+let listening=false,processing=false,ignoreClick=false;
+let audioContext=null,micStream=null,micSource=null,processor=null,silenceGain=null;
+let pcmChunks=[],recordingSampleRate=48000;
+
+let progressValue=0,progressTimer=null;
+let lastMicSettings={};
+let HF=null,phonemePipe=null,phonemeLoading=null,whisperPipe=null,whisperLoading=null;
+let lastCrackPhonetic='';
+let lastCrackStandard='';
+let lastMicRaw='';
+let lastMicKept='';
+let lastObGroups=[];
+let lastObMicTranslation='';
+let lastObMicEntries=[];
+let lastObAudioFingerprint=null;
+let lastObAudioDuration=0;
+
+const VOWELS=new Set(['aɪ','aʊ','eɪ','i','oʊ','u','æ','ɑ','ɔ','ɔɪ','ə','ɚ','ɛ','ɪ','ʊ','ʌ']);
+const OB_VOWELS=new Set(['ɑ','ɔ','ʌ','ə','oʊ','ʊ','ɚ']);
+const COMMON=new Set(`a about after again all also am an and any are around as ask at away back be because been before being best better big blue bottle but by call came can car chair clear code coffee could crack cracked day did do does dog down each easy english even every everything family final find fine first fish for friend friends from game get gets give go going good got had hard has have he hear heard hello help her here him his home hope house how i if in into is it jacket just know knew language later left like little long look made make makes many may me meeting minute more morning much music my name need new night no noise not now number numbers of okay old on one only open or other our out over people play please probably really real right room said say school second secret see she should so some something sound speak speech start still stop sure table take tell test testing thank thanks that the their them then there these they thing think this through time to today together tomorrow too translator translation try two under up us very wait want was water way we well were what when where which while who why will with without word words would yes yesterday you your backpack foreign`.split(/\s+/));
+const BAD_MARKERS=['music','singing in foreign language','foreign language','applause','clap','clapping','sound of the sound','gibberish','inaudible','unintelligible'];
+
+// ---------- progress ----------
+function resetProgress(){
+  if(progressTimer){clearTimeout(progressTimer);progressTimer=null}
+  progressValue=0;
+  progressBar.style.width='0%';
+  progress.classList.add('hidden');
+}
+function setProgress(v){
+  const target=Math.max(0,Math.min(98,Number(v)||0));
+  progressValue=Math.max(progressValue,target);
+  progress.classList.remove('hidden');
+  progressBar.style.width=progressValue.toFixed(1)+'%';
+}
+function finishProgress(){
+  progressValue=100;
+  progress.classList.remove('hidden');
+  progressBar.style.width='100%';
+  progressTimer=setTimeout(()=>{
+    progress.classList.add('hidden');
+    progressBar.style.width='0%';
+    progressValue=0;
+  },500);
+}
+
+// ---------- generic text ----------
+function normalizeSpaces(s){return String(s||'').replace(/\s+/g,' ').trim()}
+function escapeRegExp(s){return String(s||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}
+function mapWords(text,fn){return String(text||'').replace(/[A-Za-zÀ-ÖØ-öø-ÿ']+/g,fn)}
+function preserveCase(original,replacement){
+  if(!replacement)return'';
+  if(original===original.toUpperCase())return replacement.toUpperCase();
+  if(original[0]&&original[0]===original[0].toUpperCase())
+    return replacement[0].toUpperCase()+replacement.slice(1).toLowerCase();
+  return replacement.toLowerCase();
+}
+
+// ---------- typed Ob decoder ----------
+function decodeObWord(word){
+  const original=String(word||'');
+  const lower=original.toLowerCase();
+  const vowels='aeiouy';
+  let out='';
+
+  // In standard Ob, a vowel is encoded as exactly "ob" + vowel.
+  // Decode the whole token at once. This avoids the old greedy-regex bug
+  // with adjacent vowels (for example "you" and "cooperate").
+  for(let i=0;i<lower.length;){
+    if(lower.slice(i,i+2)==='ob' && vowels.includes(lower[i+2]||'')){
+      out+=original[i+2];
+      i+=3;
+      continue;
+    }
+
+    // Tolerate common literal-ASR variants of the inserted spoken syllable.
+    if(lower.slice(i,i+3)==='awb' && vowels.includes(lower[i+3]||'')){
+      out+=original[i+3];
+      i+=4;
+      continue;
+    }
+    if(lower.slice(i,i+3)==='ahb' && vowels.includes(lower[i+3]||'')){
+      out+=original[i+3];
+      i+=4;
+      continue;
+    }
+    if(lower.slice(i,i+2)==='ub' && vowels.includes(lower[i+2]||'')){
+      out+=original[i+2];
+      i+=3;
+      continue;
+    }
+    if(lower.slice(i,i+2)==='op' && vowels.includes(lower[i+2]||'')){
+      out+=original[i+2];
+      i+=3;
+      continue;
+    }
+
+    // Imperfect/transcribed input can contain a naked vowel or other literal
+    // sound. Keep it rather than deleting information.
+    out+=original[i];
+    i++;
+  }
+
+  return preserveCase(original,out);
+}
+function decodeOb(text){
+  let s=normalizeSpaces(String(text||''));
+  s=s
+    .replace(/\b(?:ob|awb|ahb|ub|op)\s+(?=[aeiouy])/gi,'')
+    .replace(/\bo\s+b\s+(?=[aeiouy])/gi,'');
+  return mapWords(s,decodeObWord);
+}
+
+
+// ---------- reverse mode: English → Ob / cracked code ----------
+function spokenVowelCountForWord(word){
+  const lower=String(word||'').toLowerCase();
+  try{
+    const bases=buildPhoneIndex().wordToBases?.get(lower)||[];
+    if(bases.length){
+      const counts=bases.map(base=>base.filter(isVowelPhoneme).length).filter(n=>n>0);
+      if(counts.length){
+        const freq=new Map();
+        for(const n of counts)freq.set(n,(freq.get(n)||0)+1);
+        return [...freq.entries()].sort((a,b)=>b[1]-a[1]||a[0]-b[0])[0][0];
+      }
+    }
+  }catch{}
+  return null;
+}
+
+function spellingVowelCandidates(word){
+  const lower=String(word||'').toLowerCase();
+  const isVL=ch=>/[aeiouy]/.test(ch||'');
+  const commonDigraphs=new Set(['ai','ay','au','aw','ea','ee','ei','ey','ie','oa','oe','oi','oo','ou','ow','ue','ui']);
+  const hiatusPairs=new Set(['ia','io','iu','ua','uo']);
+  const out=[];
+
+  for(let i=0;i<lower.length;i++){
+    const ch=lower[i];
+    if(!isVL(ch))continue;
+
+    let cost=0;
+    const prev=lower[i-1]||'',next=lower[i+1]||'';
+
+    // Initial y before another vowel normally acts like the consonant /y/.
+    if(ch==='y'&&i===0&&isVL(next))cost+=6;
+
+    // A final silent-e is strongly disfavored. In consonant+le endings, the
+    // spelling often represents a real schwa syllable, so keep it available.
+    if(ch==='e'&&i===lower.length-1&&lower.length>2){
+      const finalLe=lower.endsWith('le')&&lower.length>2&&!isVL(lower[lower.length-3]);
+      cost+=finalLe?.8:5.5;
+    }
+
+    // Consecutive vowel letters often share one sound. Some pairs (ia/io/etc.)
+    // commonly represent separate sounds, so they receive only a small penalty.
+    if(isVL(prev)){
+      const pair=prev+ch;
+      const initialYConsonant=(i===1&&prev==='y'&&isVL(ch));
+      if(initialYConsonant)cost+=0;
+      else if(hiatusPairs.has(pair))cost+=.7;
+      else if(commonDigraphs.has(pair))cost+=3.5;
+      else cost+=2.2;
+    }
+
+    // In most q+u spellings, u is not an independent vowel sound.
+    if(ch==='u'&&prev==='q')cost+=2.5;
+
+    out.push({index:i,cost});
+  }
+  return out;
+}
+
+function audibleVowelLetterPositions(word){
+  const lower=String(word||'').toLowerCase();
+  const candidates=spellingVowelCandidates(lower);
+  if(!candidates.length)return [];
+
+  const spokenCount=spokenVowelCountForWord(lower);
+  if(!spokenCount){
+    // Fallback without a dictionary entry: one insertion per vowel-letter run,
+    // excluding a likely silent final e.
+    const out=[];
+    for(let i=0;i<candidates.length;i++){
+      const c=candidates[i];
+      const prevIndex=i?candidates[i-1].index:-99;
+      const isRunContinuation=c.index===prevIndex+1;
+      const silentFinalE=lower[c.index]==='e'&&c.index===lower.length-1&&c.cost>=5;
+      if(!isRunContinuation&&!silentFinalE)out.push(c.index);
+    }
+    return out.length?out:[candidates[0].index];
+  }
+
+  // Select exactly as many written vowel anchors as there are audible vowel
+  // phonemes. Silent letters and likely digraph-continuations lose first.
+  return [...candidates]
+    .sort((a,b)=>a.cost-b.cost||a.index-b.index)
+    .slice(0,Math.min(spokenCount,candidates.length))
+    .map(x=>x.index)
+    .sort((a,b)=>a-b);
+}
+
+function encodeObWord(word){
+  const original=String(word||'');
+  if(!/[A-Za-z]/.test(original))return original;
+
+  const positions=new Set(audibleVowelLetterPositions(original));
+  let out='';
+  for(let i=0;i<original.length;i++){
+    if(positions.has(i))out+='ob';
+    out+=original[i];
+  }
+  return out;
+}
+function encodeOb(text){
+  return mapWords(text,encodeObWord);
+}
+function encodeA1Z26(text){
+  return String(text||'').split(/(\s+)/).map(part=>{
+    if(/^\s+$/.test(part))return ' / ';
+    return [...part].map(ch=>{
+      const c=ch.toLowerCase();
+      if(c>='a'&&c<='z')return String(c.charCodeAt(0)-96);
+      return ch;
+    }).join(' ');
+  }).join('').replace(/\s*\/\s*/g,' / ').replace(/\s+/g,' ').trim();
+}
+function encodeASCII(text){
+  return [...String(text||'')].map(ch=>String(ch.charCodeAt(0))).join(' ');
+}
+function encodeT9(text){
+  return String(text||'').split(/(\s+)/).map(part=>{
+    if(/^\s+$/.test(part))return ' ';
+    return [...part.toLowerCase()].map(ch=>T9MAP[ch]||ch).join('');
+  }).join('').trim();
+}
+function encodeLeet(text,mapIndex=0){
+  const map=LEET[mapIndex]||LEET[0];
+  const inverse={};
+  for(const [digit,letter] of Object.entries(map)){
+    if(!(letter in inverse))inverse[letter]=digit;
+  }
+  return [...String(text||'')].map(ch=>{
+    const lower=ch.toLowerCase();
+    const replacement=inverse[lower];
+    if(replacement==null)return ch;
+    return replacement;
+  }).join('');
+}
+function encodeCustom(text,lang){
+  if(!lang?.rule)return {text:'',note:'This cracked language does not have a reversible rule yet.'};
+  const r=lang.rule,t=String(r.token||'');
+
+  if(r.type==='a1z26')return {text:encodeA1Z26(text)};
+  if(r.type==='ascii')return {text:encodeASCII(text)};
+  if(r.type==='t9')return {text:encodeT9(text)};
+  if(r.type==='leet')return {text:encodeLeet(text,r.mapIndex||0)};
+
+  // "removeToken" does not preserve the original insertion positions, so
+  // generate a valid reversible form by putting the learned token between words.
+  if(r.type==='removeToken'){
+    const words=normalizeSpaces(text).split(' ').filter(Boolean);
+    return {text:words.join(` ${t} `),note:'Uses the learned repeated token between words.'};
+  }
+  if(r.type==='beforeVowel'){
+    return {text:mapWords(text,w=>w.replace(/[aeiouy]/gi,m=>t+m))};
+  }
+  if(r.type==='afterVowel'){
+    return {text:mapWords(text,w=>w.replace(/[aeiouy]/gi,m=>m+t))};
+  }
+
+  return {text:'',note:'Add more info to this cracked language before using Reverse.'};
+}
+
+function currentLanguageName(){
+  if(selectedMode==='ob')return 'Ob';
+  if(selectedMode.startsWith('custom:')){
+    const lang=crackedLanguages.find(x=>x.id===selectedMode.split(':')[1]);
+    return lang?.name||'Cracked';
+  }
+  return 'Ob';
+}
+
+function reverseOutputFor(text){
+  if(selectedMode==='ob')return {text:encodeOb(text)};
+  if(selectedMode.startsWith('custom:')){
+    const lang=crackedLanguages.find(x=>x.id===selectedMode.split(':')[1]);
+    return encodeCustom(text,lang);
+  }
+  return {text:'',note:'Select Ob or a cracked language first.'};
+}
+
+function speechTextForReverse(output){
+  const text=String(output||'').trim();
+  if(!text)return '';
+
+  if(selectedMode==='ob'){
+    // Keep each Ob word intact. Slower speech rate below makes inserted "ob"
+    // syllables much easier to hear than spelling the word letter-by-letter.
+    return text;
+  }
+
+  if(selectedMode.startsWith('custom:')){
+    const lang=crackedLanguages.find(x=>x.id===selectedMode.split(':')[1]);
+    const r=lang?.rule;
+
+    // T9 needs digits spoken individually rather than as a giant number.
+    if(r?.type==='t9'){
+      return text.replace(/\d/g,d=>d+' ').replace(/\s+/g,' ').trim();
+    }
+    // A1Z26/ASCII are already separated into numeric tokens, which native
+    // speech synthesis reads naturally.
+    return text.replace(/\//g,' pause ');
+  }
+  return text;
+}
+
+function stopSpeaking(){
+  try{window.speechSynthesis?.cancel()}catch{}
+}
+
+function playReverseOutput(){
+  if(!('speechSynthesis' in window)||typeof SpeechSynthesisUtterance==='undefined'){
+    statusEl.textContent='Audio playback is not supported in this browser.';
+    return;
+  }
+
+  if(!input.value.trim()){
+    statusEl.textContent='Type some English first.';
+    return;
+  }
+
+  renderTypedTranslation();
+  const output=result.textContent.trim();
+  if(!output||output==='—'){
+    statusEl.textContent='There is nothing to play yet.';
+    return;
+  }
+
+  const spoken=speechTextForReverse(output);
+  if(!spoken){
+    statusEl.textContent='There is nothing to play yet.';
+    return;
+  }
+
+  stopSpeaking();
+  const utter=new SpeechSynthesisUtterance(spoken);
+  utter.lang='en-US';
+  utter.rate=selectedMode==='ob' ? 0.44 : 0.52;
+  utter.pitch=1.0;
+  utter.volume=1;
+
+  const voices=window.speechSynthesis.getVoices?.()||[];
+  const preferred=voices.find(v=>/^en-US$/i.test(v.lang)&&/samantha|ava|allison|siri|daniel|alex/i.test(v.name))
+               ||voices.find(v=>/^en-US/i.test(v.lang))
+               ||voices.find(v=>/^en/i.test(v.lang));
+  if(preferred)utter.voice=preferred;
+
+  utter.onstart=()=>{
+    mic.textContent='⏹';
+    statusEl.textContent='Playing…';
+  };
+  utter.onend=()=>{
+    mic.textContent='🔊';
+    statusEl.textContent='Done.';
+  };
+  utter.onerror=()=>{
+    mic.textContent='🔊';
+    statusEl.textContent='Could not play that pronunciation.';
+  };
+
+  window.speechSynthesis.speak(utter);
+}
+
+function updateDirectionUI(){
+  const reverse=direction==='encode';
+  reverseBtn.classList.toggle('active',reverse);
+  reverseBtn.setAttribute('aria-pressed',String(reverse));
+  reverseText.textContent=reverse?'Reverse: ON':'Reverse';
+
+  stopSpeaking();
+  resetProgress();
+  statusEl.textContent='';
+
+  if(reverse){
+    showLearningUI(false);
+    // If Crack New was open, use Ob for the first reverse conversion.
+    if(selectedMode==='crack'){
+      selectedMode='ob';
+      document.querySelectorAll('.mode[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode==='ob'));
+      crackPanel.classList.add('hidden');
+    }
+
+    inputLabel.textContent='Type English';
+    input.placeholder='Example: hello how are you';
+    resultLabel.textContent=currentLanguageName();
+    translateBtn.textContent='Convert';
+    mic.textContent='🔊';
+    mic.setAttribute('aria-label','Play pronunciation');
+    debug.classList.add('hidden');
+  }else{
+    inputLabel.textContent=selectedMode==='ob'?'Type Ob or use the microphone':'Type code or use the microphone';
+    input.placeholder=selectedMode==='ob'?'Example: hobellobo':'Type coded text here';
+    resultLabel.textContent='English translation';
+    translateBtn.textContent='Translate';
+    mic.textContent='🎤';
+    mic.setAttribute('aria-label','Record');
+  }
+
+  if(input.value.trim())renderTypedTranslation();
+  else{
+    result.textContent='—';
+    pill.textContent='WAITING';
+  }
+}
+
+function toggleDirection(){
+  if(processing||listening)return;
+  direction=direction==='decode'?'encode':'decode';
+  updateDirectionUI();
+}
+
+
+// ---------- audio utilities ----------
+function mergeFloat32(chunks){
+  let total=0;for(const c of chunks)total+=c.length;
+  const out=new Float32Array(total);let o=0;
+  for(const c of chunks){out.set(c,o);o+=c.length}
+  return out;
+}
+function resampleLinear(a,from,to=16000){
+  if(from===to)return new Float32Array(a);
+  const ratio=from/to,n=Math.max(1,Math.floor(a.length/ratio)),out=new Float32Array(n);
+  for(let i=0;i<n;i++){
+    const p=i*ratio,l=Math.floor(p),r=Math.min(l+1,a.length-1),f=p-l;
+    out[i]=a[l]*(1-f)+a[r]*f;
+  }
+  return out;
+}
+function rms(a,s=0,e=a.length){
+  let q=0,n=Math.max(1,e-s);
+  for(let i=s;i<e;i++){const v=a[i];q+=v*v}
+  return Math.sqrt(q/n);
+}
+function percentile(a,p){
+  if(!a.length)return 0;
+  const x=Array.from(a).sort((m,n)=>m-n);
+  return x[Math.max(0,Math.min(x.length-1,Math.floor((x.length-1)*p)))];
+}
+function normalizeAudio(a,maxGain=4){
+  if(!a.length)return new Float32Array(0);
+  const out=new Float32Array(a);
+  let mean=0;for(const x of out)mean+=x;mean/=out.length;
+  let peak=0;
+  for(let i=0;i<out.length;i++){out[i]-=mean;peak=Math.max(peak,Math.abs(out[i]))}
+  if(peak>0&&peak<.88){
+    const g=Math.min(maxGain,.90/peak);
+    for(let i=0;i<out.length;i++)out[i]*=g;
+  }
+  return out;
+}
+function speechBandpass(input,sr=16000){
+  if(!input.length)return new Float32Array(0);
+  const hp=new Float32Array(input.length),out=new Float32Array(input.length);
+  const dt=1/sr;
+  const hpRC=1/(2*Math.PI*85),hpA=hpRC/(hpRC+dt);
+  let py=0,px=input[0]||0;
+  for(let i=0;i<input.length;i++){
+    const x=input[i],y=hpA*(py+x-px);
+    hp[i]=y;py=y;px=x;
+  }
+  const lpRC=1/(2*Math.PI*6800),lpA=dt/(lpRC+dt);
+  let lp=hp[0]||0;
+  for(let i=0;i<hp.length;i++){lp+=lpA*(hp[i]-lp);out[i]=lp}
+  return out;
+}
+function smoothStep01(x){x=Math.max(0,Math.min(1,x));return x*x*(3-2*x)}
+function frameRms(audio,frame,hop){
+  const n=Math.max(1,1+Math.floor(Math.max(0,audio.length-frame)/hop)),out=new Float32Array(n);
+  for(let i=0;i<n;i++)out[i]=rms(audio,i*hop,Math.min(audio.length,i*hop+frame));
+  return out;
+}
+function buildForegroundGain(energies,strict=true){
+  const p15=percentile(energies,.15),p30=percentile(energies,.30),p50=percentile(energies,.50),
+        p70=percentile(energies,.70),p85=percentile(energies,.85);
+  const contrast=p85/(p15+1e-8);
+  let low,high,floor,segmentThreshold;
+  if(strict&&contrast>=2.1){
+    low=Math.max(p15*2.0,p30*1.35,p50*.78);
+    high=Math.max(low*1.55,p70*1.05);
+    floor=.018;
+    segmentThreshold=.46;
+  }else{
+    low=Math.max(p15*.90,p30*.80);
+    high=Math.max(low*1.20,p70*.72);
+    floor=strict?.18:.28;
+    segmentThreshold=strict?.30:.24;
+  }
+  if(high<=low)high=low+1e-5;
+  const gain=new Float32Array(energies.length);
+  let previous=floor;
+  for(let i=0;i<energies.length;i++){
+    const z=(energies[i]-low)/(high-low),target=floor+(1-floor)*smoothStep01(z);
+    // Fast attack keeps consonants; slow release avoids chopping word endings.
+    const alpha=target>previous?.58:.09;
+    previous+=alpha*(target-previous);
+    gain[i]=previous;
+  }
+  return {gain,stats:{p15,p30,p50,p70,p85,contrast,low,high,segmentThreshold,floor}};
+}
+function applyFrameGain(audio,gain,frame,hop){
+  const out=new Float32Array(audio.length);
+  if(!gain.length)return out;
+  let gi=0;
+  for(let i=0;i<audio.length;i++){
+    const pos=(i-frame*.5)/hop;
+    const lo=Math.max(0,Math.min(gain.length-1,Math.floor(pos))),hi=Math.min(gain.length-1,lo+1),f=Math.max(0,Math.min(1,pos-lo));
+    const g=gain[lo]*(1-f)+gain[hi]*f;
+    out[i]=audio[i]*g;
+  }
+  return out;
+}
+function regionsFromGain(gain,threshold,hop,sr,mergeSeconds=.48,minSeconds=.18){
+  const mask=Array.from(gain,g=>g>=threshold),runs=[];let s=-1;
+  for(let i=0;i<=mask.length;i++){
+    const on=i<mask.length&&mask[i];
+    if(on&&s<0)s=i;
+    if((!on||i===mask.length)&&s>=0){
+      const e=i;
+      if((e-s)*hop/sr>=minSeconds)runs.push([s,e]);
+      s=-1;
+    }
+  }
+  const maxGap=Math.round(mergeSeconds*sr/hop),merged=[];
+  for(const r of runs){
+    if(merged.length&&r[0]-merged[merged.length-1][1]<=maxGap)merged[merged.length-1][1]=r[1];
+    else merged.push(r.slice());
+  }
+  return merged;
+}
+function splitLongRegion(audio,start,end,sr=16000,maxSeconds=5.4,overlap=.18){
+  const max=Math.floor(maxSeconds*sr),step=Math.max(1,Math.floor((maxSeconds-overlap)*sr)),out=[];
+  let s=start;
+  while(end-s>max){out.push([s,s+max]);s+=step}
+  if(end-s>=Math.floor(.20*sr))out.push([s,end]);
+  return out;
+}
+function prepareForeground(audio,sr=16000,kind='ob'){
+  const filtered=speechBandpass(audio,sr);
+  const totalDuration=audio.length/sr;
+  const strict=kind==='ob';
+
+  // Short speech is the most important case ("hobellobo", a sentence, a new
+  // code example). Do NOT run it through the aggressive foreground gate:
+  // that gate can split off the initial/final Ob syllable.
+  if(totalDuration<=4.6){
+    const frame=Math.floor(.02*sr),hop=Math.floor(.01*sr),energies=frameRms(filtered,frame,hop);
+    const floor=percentile(energies,.22)||0;
+    const peak=percentile(energies,.90)||0;
+    const threshold=Math.max(.0012,floor*1.7,peak*.075);
+
+    let first=0,last=Math.max(0,energies.length-1);
+    while(first<energies.length&&energies[first]<threshold)first++;
+    while(last>first&&energies[last]<threshold)last--;
+
+    const pad=Math.floor(.24*sr);
+    const start=Math.max(0,first*hop-pad);
+    const end=Math.min(filtered.length,(last+1)*hop+frame+pad);
+    let clip=filtered.slice(start,end);
+    clip=normalizeAudio(clip,2.8);
+
+    if(clip.length<sr*.18||rms(clip)<.00045){
+      clip=normalizeAudio(filtered,2.8);
+    }
+
+    return {
+      audio:clip,
+      clips:[{audio:clip,start:start/sr,end:end/sr,duration:clip.length/sr,energy:rms(clip),short:true}],
+      selectedDuration:clip.length/sr,
+      totalDuration,
+      stats:{shortPath:true,threshold,floor,peak}
+    };
+  }
+
+  const frame=Math.floor(.02*sr),hop=Math.floor(.01*sr),energies=frameRms(filtered,frame,hop);
+  const fg=buildForegroundGain(energies,strict);
+  let enhanced=applyFrameGain(filtered,fg.gain,frame,hop);
+  enhanced=normalizeAudio(enhanced,3.0);
+
+  let regions=regionsFromGain(fg.gain,fg.stats.segmentThreshold,hop,sr,strict?.44:.34,.17);
+  const selectedFrames=regions.reduce((s,r)=>s+(r[1]-r[0]),0);
+  const ratio=selectedFrames/Math.max(1,fg.gain.length);
+
+  if(strict&&fg.stats.contrast>2.6&&ratio>.88){
+    regions=regionsFromGain(fg.gain,Math.min(.72,fg.stats.segmentThreshold+.10),hop,sr,.40,.17);
+  }
+
+  const padBefore=Math.floor(.15*sr),padAfter=Math.floor(.19*sr),clips=[];
+  const maxSeconds=strict?2.75:4.4;
+  const overlap=strict?.12:.18;
+
+  for(const [a,b] of regions){
+    const start=Math.max(0,a*hop-padBefore),end=Math.min(enhanced.length,b*hop+frame+padAfter);
+    for(const [s,e] of splitLongRegion(enhanced,start,end,sr,maxSeconds,overlap)){
+      const clip=enhanced.slice(s,e),duration=(e-s)/sr;
+      if(duration<.20)continue;
+      clips.push({audio:clip,start:s/sr,end:e/sr,duration,energy:rms(clip),short:false});
+    }
+  }
+
+  if(!clips.length){
+    const max=Math.floor((strict?2.75:4.2)*sr),step=Math.floor((strict?2.63:4.0)*sr);
+    for(let s=0;s<enhanced.length;s+=step){
+      const e=Math.min(enhanced.length,s+max),clip=enhanced.slice(s,e);
+      if(clip.length>=sr*.22&&rms(clip)>.00045)
+        clips.push({audio:clip,start:s/sr,end:e/sr,duration:(e-s)/sr,energy:rms(clip),short:false});
+      if(e===enhanced.length)break;
+    }
+  }
+
+  const selectedDuration=clips.reduce((s,c)=>s+c.duration,0);
+  return {audio:enhanced,clips,selectedDuration,totalDuration,stats:fg.stats};
+}
+function dedupeJoin(parts){
+  const out=[];
+  for(const part0 of parts){
+    const part=normalizeSpaces(part0);
+    if(!part||part==='[skip]')continue;
+    const ws=part.split(' ').filter(Boolean);
+    if(!ws.length)continue;
+    let overlap=0;
+    for(let k=Math.min(8,out.length,ws.length);k>=1;k--){
+      if(out.slice(-k).join(' ')===ws.slice(0,k).join(' ')){overlap=k;break}
+    }
+    out.push(...ws.slice(overlap));
+  }
+  return out.join(' ');
+}
+
+// ---------- phoneme engine ----------
+function normalizePhoneme(p){
+  return String(p||'').replace(/[ˈˌ]/g,'').trim();
+}
+function phonemeTokens(out){
+  const chunks=Array.isArray(out?.chunks)?out.chunks:[];
+  const tokens=[];
+  for(const c of chunks){
+    const p=normalizePhoneme(c?.text);
+    const ts=c?.timestamp;
+    if(!p||!Array.isArray(ts)||ts.length<2)continue;
+    const start=Number(ts[0]),end=Number(ts[1]);
+    if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start)continue;
+    tokens.push({p,start,end});
+  }
+  return tokens;
+}
+function isVowelPhoneme(p){return VOWELS.has(normalizePhoneme(p))}
+function isObVowelPhoneme(p){return OB_VOWELS.has(normalizePhoneme(p))}
+
+function obSignalStats(tokens){
+  const phones=tokens
+    .map(t=>normalizePhoneme(t.p??t))
+    .filter(p=>p&&p!=='|');
+
+  const n=phones.length;
+  if(!n)return {n:0,bp:0,exact:0,near:0,density:0,score:0,likely:false};
+
+  let bp=0,exact=0,near=0;
+  for(const p of phones)if(p==='b'||p==='p')bp++;
+
+  for(let i=0;i+2<n;i++){
+    const a=phones[i],b=phones[i+1],c=phones[i+2];
+    if(isObVowelPhoneme(a)&&(b==='b'||b==='p')&&isVowelPhoneme(c))exact++;
+    if(isVowelPhoneme(a)&&(b==='b'||b==='p')&&isVowelPhoneme(c))near++;
+  }
+
+  const density=bp/Math.max(1,n);
+
+  // This was tuned against thousands of dictionary-pronunciation simulations.
+  // Ordinary English almost never sustains this many b/p phones. Ob does.
+  const likely =
+    (n>=6 && density>=.155 && bp>=2 && (near>=1||exact>=1)) ||
+    (exact>=3 && density>=.12);
+
+  const score =
+    density*100 +
+    Math.min(30,exact*4) +
+    Math.min(18,near*2);
+
+  return {n,bp,exact,near,density,score,likely};
+}
+
+function detectObIntervals(tokens){
+  const signal=obSignalStats(tokens),intervals=[];
+  const relaxed=signal.likely;
+
+  for(let i=0;i+2<tokens.length;i++){
+    const a=tokens[i],b=tokens[i+1],next=tokens[i+2];
+    const av=normalizePhoneme(a.p),bp=normalizePhoneme(b.p),nv=normalizePhoneme(next.p);
+
+    if(av==='|'||bp==='|'||nv==='|')continue;
+    if(bp!=='b'&&bp!=='p')continue;
+    if(!isVowelPhoneme(nv))continue;
+
+    const exact=isObVowelPhoneme(av);
+    const relaxedMatch=relaxed&&isVowelPhoneme(av);
+
+    if(!exact&&!relaxedMatch)continue;
+
+    const vowelDuration=Math.max(0,a.end-a.start);
+    const bDuration=Math.max(0,b.end-b.start);
+    const pairDuration=b.end-a.start;
+    const nextGap=Math.max(0,next.start-b.end);
+
+    // Relaxed matches need to look like the short inserted "ob" syllable.
+    if(!exact && (vowelDuration>.30||bDuration>.23))continue;
+    if(pairDuration>.90||nextGap>.38)continue;
+
+    intervals.push({
+      start:Math.max(0,a.start-.020),
+      end:b.end+.014,
+      phones:`${av} ${bp}`,
+      index:i,
+      relaxed:!exact
+    });
+    i++;
+  }
+  return mergeIntervals(intervals);
+}
+function mergeIntervals(intervals){
+  const s=[...intervals].sort((a,b)=>a.start-b.start),out=[];
+  for(const x of s){
+    if(!out.length||x.start>out[out.length-1].end+.02)out.push({...x});
+    else out[out.length-1].end=Math.max(out[out.length-1].end,x.end);
+  }
+  return out;
+}
+function concatCrossfade(parts,fadeSamples=128){
+  const nonempty=parts.filter(p=>p?.length);
+  if(!nonempty.length)return new Float32Array(0);
+  let out=new Float32Array(nonempty[0]);
+
+  for(let k=1;k<nonempty.length;k++){
+    const p=nonempty[k];
+    const f=Math.min(fadeSamples,out.length,p.length);
+    const next=new Float32Array(out.length+p.length-f);
+    next.set(out.subarray(0,out.length-f),0);
+
+    const base=out.length-f;
+    for(let i=0;i<f;i++){
+      const t=(i+1)/(f+1);
+      next[base+i]=out[out.length-f+i]*(1-t)+p[i]*t;
+    }
+    next.set(p.subarray(f),base+f);
+    out=next;
+  }
+  return out;
+}
+function removeTimedIntervals(audio,intervals,sr=16000){
+  if(!intervals.length)return new Float32Array(audio);
+  const parts=[];let cursor=0;
+  for(const iv of intervals){
+    const s=Math.max(cursor,Math.min(audio.length,Math.floor(iv.start*sr)));
+    const e=Math.max(s,Math.min(audio.length,Math.ceil(iv.end*sr)));
+    if(s>cursor)parts.push(audio.slice(cursor,s));
+    cursor=e;
+  }
+  if(cursor<audio.length)parts.push(audio.slice(cursor));
+  return concatCrossfade(parts,Math.floor(sr*.008));
+}
+
+
+
+
+// ---------- raw-audio acoustic fingerprint engine ----------
+// Fix & Teach no longer requires the phoneme recognizer to understand the
+// utterance first. A short recording is converted to a compact MFCC-like
+// time-series fingerprint and can be compared directly using DTW.
+
+const ACOUSTIC_DIMS=13;
+const ACOUSTIC_NFFT=512;
+const ACOUSTIC_NMEL=20;
+const BUILTIN_GOOD_HELLO_ACOUSTIC={"id":"hello-2da4839c","word":"hello","dims":13,"frameCount":138,"q":[-32,-78,-25,11,72,-20,-12,39,50,1,-28,-10,-1,-29,-84,-28,12,52,2,14,30,38,32,57,17,-12,-24,-82,-32,-7,51,-27,-5,44,39,36,53,37,38,-25,-78,-25,13,70,-17,-1,36,42,23,2,-3,4,-26,-65,-8,14,48,-23,-8,7,45,21,1,16,9,-31,-65,-19,19,50,-21,-21,-3,25,22,19,18,25,-43,-63,-11,22,36,-37,-21,24,52,20,9,-6,-1,-43,-53,-12,8,47,-31,-41,11,51,34,-3,11,28,-33,-40,-28,2,34,-35,-42,-8,44,17,5,-18,3,-31,-45,-35,-10,35,-34,-29,22,20,34,-2,-46,11,-30,-49,-40,-9,0,-30,0,38,47,8,14,19,5,-21,-49,-55,6,-25,-53,-12,13,42,21,33,-15,3,-17,-51,-66,6,9,-28,-15,5,76,12,17,-34,-1,-9,-51,-67,12,15,25,2,-1,42,-29,-10,-73,-3,-2,-50,-71,-4,-10,25,9,-21,38,-19,29,-76,-31,3,-50,-59,2,-57,-9,-3,-68,40,-30,8,-59,-77,9,-53,-64,-13,-31,21,3,-29,30,-25,1,-25,-29,4,-60,-59,-4,-14,53,9,-3,47,-12,-3,-3,-23,11,-60,-65,-12,-40,23,-15,-15,50,5,45,-6,-28,12,-53,-60,-16,-50,22,5,-10,27,-35,-5,-52,-43,10,-53,-64,-27,-47,-2,8,-4,-7,-26,17,-9,5,10,-44,-52,-31,-14,50,39,13,-26,-24,16,18,20,10,-44,-18,-8,22,43,45,4,11,-13,-3,17,13,33,-18,13,-4,23,11,18,20,0,-27,-11,-4,19,44,-5,13,-28,3,0,40,27,-41,-51,-28,53,26,49,-1,6,-46,-1,31,43,3,-35,-54,-2,59,22,51,-2,1,-43,4,16,46,27,-44,-52,3,49,30,51,2,0,-57,14,3,56,26,-55,-37,-8,25,24,49,0,4,-53,8,9,71,10,-54,-44,7,43,21,46,-1,3,-44,16,7,54,11,-45,-43,19,19,13,42,1,10,-51,10,14,46,19,-38,-30,-10,36,27,45,-4,17,-43,2,15,24,15,-13,-21,-9,27,26,42,-1,13,-38,3,7,23,17,-20,-7,8,-21,24,37,4,19,-44,5,0,35,-3,1,-4,-9,-14,17,41,3,2,-33,9,-1,33,3,-9,-16,-16,-4,39,39,3,2,-30,7,7,31,2,-6,-20,-6,5,28,38,4,14,-41,1,21,31,5,-23,-25,-5,16,32,39,10,1,-45,4,22,35,0,-40,-30,2,30,61,43,10,9,-53,-19,11,42,25,-49,-30,15,38,42,47,13,5,-62,-21,-8,45,27,-15,-28,-2,22,45,48,15,1,-54,-31,-4,22,10,7,-11,12,-6,30,50,15,-10,-42,-24,-32,29,7,-17,-6,39,-28,64,46,17,12,-33,-40,-40,13,22,-16,2,17,-4,58,48,20,8,-23,-41,-55,-2,27,27,0,0,-10,46,43,25,8,-38,-37,-74,5,30,-13,5,-20,-4,40,34,31,23,-28,-36,-71,-17,23,-5,-2,-14,-9,26,25,27,19,-21,-11,-15,18,17,-1,-2,18,17,24,12,18,2,-29,-27,18,26,27,-22,10,38,22,44,-1,17,6,-6,-10,11,25,34,-5,9,3,-11,15,-7,14,1,-23,-3,8,38,49,-5,4,-3,31,77,-13,13,8,-22,-6,-13,24,48,13,25,22,32,66,-19,16,11,-6,19,-11,9,31,-10,7,37,50,58,-24,13,6,-13,30,-1,32,45,24,3,49,54,68,-6,1,-4,6,67,-13,6,5,19,21,30,12,37,23,14,15,34,35,-60,-62,-31,18,47,17,-43,23,30,28,11,24,-29,-59,-73,-7,-10,39,50,28,-11,34,31,0,42,-53,-67,-65,-24,-5,46,65,-10,13,41,24,2,39,-71,-21,-76,-3,12,33,12,3,3,43,28,-6,21,-63,-2,-76,-15,16,44,7,26,-20,44,20,-4,29,-76,0,-77,-19,15,57,24,53,-20,41,22,-6,20,-60,33,-79,-21,-7,56,-22,91,-29,37,21,7,27,-51,53,-96,-8,-27,64,-68,84,-19,32,18,31,30,-54,29,-61,-27,-34,50,-66,86,-16,25,14,29,39,-34,38,-53,-24,-27,21,-37,86,-21,19,21,30,31,-27,34,-26,-59,-16,22,-57,51,-18,11,24,31,19,-6,18,-6,-57,-46,39,-29,0,-16,3,21,47,30,-16,13,-37,-71,-17,32,-12,33,-37,-5,14,42,46,-10,13,-15,-63,-32,32,-6,-4,-52,-13,16,60,48,-1,-5,-3,-49,-7,-10,-35,29,-10,-11,20,63,29,-10,-8,-22,-65,12,-6,-36,23,-28,-14,21,66,25,-4,2,-24,-59,1,0,-44,1,11,-6,21,70,20,-6,-41,-46,-34,10,12,-5,1,1,7,9,83,-27,-21,-14,-32,-32,5,7,-29,22,17,4,15,62,-17,-47,15,19,-4,29,-31,-41,17,20,6,19,41,-15,-50,15,24,10,6,-33,-31,20,25,7,22,23,-16,-40,17,24,3,-8,-39,-19,24,34,10,25,20,-24,-56,59,9,-4,5,-34,-16,17,24,15,22,5,-15,-53,38,35,-14,-19,-15,-20,-7,30,16,25,2,-27,-39,52,29,-13,-24,6,-34,-2,34,21,24,-6,-32,-31,56,29,-10,-24,6,-25,-10,2,22,20,4,-39,-39,61,35,12,-53,37,-44,-28,-16,23,19,-3,-37,-27,68,23,33,-46,14,-27,-19,-39,23,20,-8,-37,-26,76,17,27,-38,18,-26,-40,-11,21,24,-11,-37,-26,91,17,7,-41,20,-15,-28,-16,20,22,-3,-38,-13,69,20,11,-44,34,-16,-25,-24,22,22,-2,-40,-19,70,18,2,-35,39,3,-51,-28,22,25,-9,-33,-23,48,23,3,-50,50,28,-48,-28,18,30,-2,-26,-32,54,-10,7,-53,48,46,-22,-20,7,28,7,-14,-10,41,-17,-17,-53,42,55,-25,8,-5,21,-24,-35,-4,2,-13,-5,-7,41,27,-25,-15,-16,19,-9,-37,-4,1,-1,-12,15,37,21,-36,26,-21,19,3,-50,-15,-11,0,0,26,47,27,-30,28,-27,9,-4,-45,-3,-1,16,29,57,78,81,-7,12,-36,7,-12,-33,1,-2,10,10,37,70,77,-4,53,-16,4,-13,8,50,-13,-45,-4,24,1,-10,-1,-8,-10,10,-6,26,42,-47,-52,6,46,25,28,30,15,-1,30,7,22,24,-13,-23,-22,-22,22,18,-30,37,9,30,-12,21,9,-15,-10,-35,-39,30,53,-3,28,9,29,-17,16,16,1,-14,-44,-19,23,36,0,-2,7,27,-9,18,8,-1,-20,-36,-14,32,31,-34,-12,11,27,-26,23,8,-6,-22,-39,-28,31,59,-23,-28,15,27,-31,18,2,-2,-8,-68,-6,37,64,-47,-32,8,30,-25,14,-7,13,5,-63,-20,32,44,-39,-34,10,26,-28,20,-13,-2,6,-54,22,4,29,-23,-59,8,27,-22,10,-19,1,19,-27,-8,14,24,-38,-54,8,23,-26,16,-6,5,16,-14,-44,35,23,-77,-29,2,20,-11,32,-13,9,27,-33,-14,14,-19,-69,-11,0,23,-8,28,-8,11,44,-57,-17,4,3,-34,-62,-5,26,-4,22,20,10,20,-33,-38,-6,-7,-35,-7,-6,24,-7,31,16,35,20,-58,-27,-17,-8,-3,-33,-5,27,-7,19,26,31,1,-47,-18,-18,5,5,-52,-11,29,4,15,31,3,23,-58,-15,-15,6,-1,-56,-12,29,6,13,38,3,32,-48,-22,-42,-10,-8,-29,-17,32,16,12,18,12,30,-41,-33,-54,-17,11,10,-23,32,18,24,40,-4,14,-30,-31,-48,-46,-8,0,-24,28,36,20,30,-5,4,-34,-15,-34,-33,8,-66,-24,28,35,22,38,-22,-5,-11,-16,-57,-15,10,-46,-29,30,46,20,14,-12,-2,-7,-8,-40,-19,-27,-60,-37,31,63,6,31,-27,19,-6,-20,-35,-46,-6,-47,-40,28,64,4,36,-13,17,22,-4,-63,-90,-3,0,-40,18,78,-1,25,12,12,28,-3,-35,-94,-16,-23,-42,13,83,-1,19,-4,13,48,-16,-36,-75,-5,-13,-47,9,60,16,35,-5,6,49,-3,-38,-60,4,-6,-49,5,46,4,40,-26,-15,42,18,-9,-16,26,6,-54,-3,38,32,41,-29,-23,6,6,-27,-30,26,20,-53,-16,28,40,9,-43,-11,33,21,-10,-4,5,19,-48,-23,10,50,17,-18,-5,41,16,-27,2,-9,-8,-48,-33,-22,63,17,-28,9,54,23,-65,13,46,21,-47,-37,-25,66,21,-54,-11,42,18,-68,-58,-16,-9,-51,-39,-37,67,15,-61,-11,58,29,-34,-37,-45,-5,-55,-39,-16,78,27,-47,-17,47,-1,-32,-7,-28,-35,-51,-56,-19,83,15,-18,-60,40,60,-30,16,-32,-59,-62,-50,-23,66,37,-29,-34,54,65,-44,-12,16,-24,-65,-47,-18,61,28,-25,-24,60,79,-10,-26,-13,-24,-68,-46,-21,38,22,-20,-1,54,41,-36,0,17,-24,-58,-34,-40,16,39,-40,-28,27,35,-6,0,5,-36,-64,-33,-39,15,56,-32,-49,11,78,4,22,-15,-49,-66,-26,-34,9,47,-33,-28,7,47,-12,33,9,-42],"duration":1.4,"weight":6.0,"confirmed":true,"seed":true,"time":0,"source":"provided-good-recording"};
+
+let acousticMelBank=null;
+
+function acousticHzToMel(hz){return 2595*Math.log10(1+hz/700)}
+function acousticMelToHz(m){return 700*(Math.pow(10,m/2595)-1)}
+
+function acousticMelFilters(sr=16000){
+  if(acousticMelBank)return acousticMelBank;
+  const fmin=100,fmax=7600,nfft=ACOUSTIC_NFFT,nmel=ACOUSTIC_NMEL;
+  const lo=acousticHzToMel(fmin),hi=acousticHzToMel(fmax),points=[];
+  for(let i=0;i<nmel+2;i++)points.push(acousticMelToHz(lo+(hi-lo)*i/(nmel+1)));
+  const bins=points.map(h=>Math.max(0,Math.min(nfft>>1,Math.floor((nfft+1)*h/sr))));
+  const bank=[];
+  for(let m=1;m<=nmel;m++){
+    let l=bins[m-1],c=bins[m],r=bins[m+1];
+    if(c<=l)c=Math.min(nfft>>1,l+1);
+    if(r<=c)r=Math.min(nfft>>1,c+1);
+    const f=new Float32Array((nfft>>1)+1);
+    for(let k=l;k<c;k++)f[k]=(k-l)/Math.max(1,c-l);
+    for(let k=c;k<r;k++)f[k]=(r-k)/Math.max(1,r-c);
+    bank.push(f);
+  }
+  acousticMelBank=bank;
+  return bank;
+}
+
+function acousticFftPower(frame){
+  const n=ACOUSTIC_NFFT,re=new Float64Array(n),im=new Float64Array(n);
+  re.set(frame.subarray(0,Math.min(frame.length,n)));
+
+  // bit reversal
+  for(let i=1,j=0;i<n;i++){
+    let bit=n>>1;
+    for(;j&bit;bit>>=1)j^=bit;
+    j^=bit;
+    if(i<j){
+      const tr=re[i];re[i]=re[j];re[j]=tr;
+      const ti=im[i];im[i]=im[j];im[j]=ti;
+    }
+  }
+
+  for(let len=2;len<=n;len<<=1){
+    const ang=-2*Math.PI/len,wlenCos=Math.cos(ang),wlenSin=Math.sin(ang);
+    for(let i=0;i<n;i+=len){
+      let wr=1,wi=0;
+      for(let j=0;j<(len>>1);j++){
+        const uR=re[i+j],uI=im[i+j];
+        const vR=re[i+j+(len>>1)]*wr-im[i+j+(len>>1)]*wi;
+        const vI=re[i+j+(len>>1)]*wi+im[i+j+(len>>1)]*wr;
+        re[i+j]=uR+vR;im[i+j]=uI+vI;
+        re[i+j+(len>>1)]=uR-vR;im[i+j+(len>>1)]=uI-vI;
+        const nwr=wr*wlenCos-wi*wlenSin;
+        wi=wr*wlenSin+wi*wlenCos;
+        wr=nwr;
+      }
+    }
+  }
+
+  const p=new Float32Array((n>>1)+1);
+  for(let k=0;k<p.length;k++)p[k]=(re[k]*re[k]+im[k]*im[k])/n;
+  return p;
+}
+
+function acousticTrim(audio,sr=16000){
+  if(!audio?.length||audio.length<sr*.18)return audio?.slice?.()||new Float32Array();
+  const frame=Math.floor(.020*sr),hop=Math.floor(.010*sr),energies=[];
+  for(let s=0;s+frame<=audio.length;s+=hop){
+    let sum=0;
+    for(let i=s;i<s+frame;i++)sum+=audio[i]*audio[i];
+    energies.push(Math.sqrt(sum/frame+1e-12));
+  }
+  if(!energies.length)return audio.slice();
+
+  const sorted=[...energies].sort((a,b)=>a-b);
+  const pct=q=>sorted[Math.min(sorted.length-1,Math.max(0,Math.floor((sorted.length-1)*q)))]||0;
+  const floor=pct(.20),peak=pct(.95);
+  const threshold=Math.max(.0010,floor*2.15,peak*.075);
+
+  let first=-1,last=-1;
+  for(let i=0;i<energies.length;i++){
+    if(energies[i]>=threshold){if(first<0)first=i;last=i}
+  }
+  if(first<0)return audio.slice();
+
+  const pad=Math.floor(.14*sr);
+  const start=Math.max(0,first*hop-pad);
+  const end=Math.min(audio.length,last*hop+frame+pad);
+  const out=audio.slice(start,end);
+  return out.length>=sr*.16?out:audio.slice();
+}
+
+function acousticFingerprint(audio,sr=16000){
+  let x=acousticTrim(audio,sr);
+  if(!x?.length||x.length<sr*.16)return null;
+
+  const y=new Float32Array(x.length);
+  y[0]=x[0]||0;
+  for(let i=1;i<x.length;i++)y[i]=x[i]-.97*x[i-1];
+
+  const win=400,hop=160,bank=acousticMelFilters(sr),rows=[];
+  const hamming=new Float32Array(win);
+  for(let i=0;i<win;i++)hamming[i]=.54-.46*Math.cos(2*Math.PI*i/(win-1));
+
+  for(let s=0;s+win<=y.length;s+=hop){
+    const frame=new Float32Array(ACOUSTIC_NFFT);
+    for(let i=0;i<win;i++)frame[i]=y[s+i]*hamming[i];
+    const power=acousticFftPower(frame);
+    const logmel=new Float64Array(ACOUSTIC_NMEL);
+
+    for(let m=0;m<ACOUSTIC_NMEL;m++){
+      const f=bank[m];let e=0;
+      for(let k=0;k<f.length;k++)e+=f[k]*power[k];
+      logmel[m]=Math.log(Math.max(e,1e-10));
+    }
+
+    const c=new Float64Array(ACOUSTIC_DIMS);
+    for(let d=0;d<ACOUSTIC_DIMS;d++){
+      let sum=0;
+      for(let m=0;m<ACOUSTIC_NMEL;m++)
+        sum+=logmel[m]*Math.cos(Math.PI*d*(m+.5)/ACOUSTIC_NMEL);
+      c[d]=sum;
+    }
+    rows.push(c);
+  }
+
+  if(rows.length<4)return null;
+
+  const mean=new Float64Array(ACOUSTIC_DIMS),std=new Float64Array(ACOUSTIC_DIMS);
+  for(const r of rows)for(let d=0;d<ACOUSTIC_DIMS;d++)mean[d]+=r[d];
+  for(let d=0;d<ACOUSTIC_DIMS;d++)mean[d]/=rows.length;
+  for(const r of rows)for(let d=0;d<ACOUSTIC_DIMS;d++){
+    const z=r[d]-mean[d];std[d]+=z*z;
+  }
+  for(let d=0;d<ACOUSTIC_DIMS;d++)std[d]=Math.sqrt(std[d]/rows.length)+1e-4;
+
+  const q=[];
+  for(const r of rows){
+    for(let d=0;d<ACOUSTIC_DIMS;d++){
+      const z=Math.max(-3,Math.min(3,(r[d]-mean[d])/std[d]));
+      q.push(Math.max(-127,Math.min(127,Math.round(z*32))));
+    }
+  }
+
+  return {
+    dims:ACOUSTIC_DIMS,
+    frameCount:rows.length,
+    q,
+    duration:x.length/sr
+  };
+}
+
+function acousticHash(word,fp){
+  let h=2166136261>>>0;
+  const feed=n=>{h^=(n&255);h=Math.imul(h,16777619)>>>0};
+  const prefix=`${word}|${fp.dims}|${fp.frameCount}|`;
+  for(let i=0;i<prefix.length;i++)feed(prefix.charCodeAt(i));
+  for(const v of fp.q||[])feed((Number(v)||0)&255);
+  return `${word}-${h.toString(16).padStart(8,'0')}`;
+}
+
+function acousticFrameCost(a,ai,b,bi,dims){
+  let sum=0;
+  const ao=ai*dims,bo=bi*dims;
+  for(let d=0;d<dims;d++){
+    const x=((a[ao+d]||0)-(b[bo+d]||0))/32;
+    sum+=x*x;
+  }
+  return Math.sqrt(sum/dims);
+}
+
+function acousticDtwDistance(a,b){
+  if(!a||!b||a.dims!==b.dims||!a.frameCount||!b.frameCount)return Infinity;
+  const n=a.frameCount,m=b.frameCount,dims=a.dims;
+  const ratio=Math.max(n,m)/Math.max(1,Math.min(n,m));
+  if(ratio>2.0)return Infinity;
+
+  const band=Math.max(Math.abs(n-m)+3,Math.ceil(Math.max(n,m)*.35));
+  const INF=1e9;
+  let prev=new Float64Array(m+1),cur=new Float64Array(m+1);
+  prev.fill(INF);prev[0]=0;
+
+  for(let i=1;i<=n;i++){
+    cur.fill(INF);
+    const lo=Math.max(1,i-band),hi=Math.min(m,i+band);
+    for(let j=lo;j<=hi;j++){
+      const cost=acousticFrameCost(a.q,i-1,b.q,j-1,dims);
+      cur[j]=cost+Math.min(prev[j],cur[j-1],prev[j-1]);
+    }
+    const tmp=prev;prev=cur;cur=tmp;
+  }
+
+  let distance=prev[m]/((n+m)/2);
+  const durRatio=Math.max(a.duration||1,b.duration||1)/Math.max(.05,Math.min(a.duration||1,b.duration||1));
+  distance+=Math.max(0,Math.log(durRatio))*.10;
+  return distance;
+}
+
+function addAcousticPrototype(word,fp,weight=5,confirmed=true,source='fix-and-teach'){
+  word=String(word||'').toLowerCase().replace(/[^a-z']/g,'');
+  if(!word||!fp?.q?.length)return false;
+
+  adaptiveProfile.acousticExamples=adaptiveProfile.acousticExamples||[];
+  const id=acousticHash(word,fp);
+  const old=adaptiveProfile.acousticExamples.find(x=>x.id===id);
+
+  if(old){
+    old.weight=Math.min(30,(old.weight||1)+weight);
+    old.confirmed=old.confirmed||confirmed;
+    old.time=Date.now();
+  }else{
+    adaptiveProfile.acousticExamples.push({
+      id,word,dims:fp.dims,frameCount:fp.frameCount,q:[...fp.q],
+      duration:fp.duration,weight,confirmed:!!confirmed,seed:false,
+      time:Date.now(),source
+    });
+  }
+  return true;
+}
+
+function matchAcousticFingerprint(fp){
+  if(!fp?.q?.length)return {word:'',distance:Infinity};
+  const all=adaptiveProfile.acousticExamples||[];
+  if(!all.length)return {word:'',distance:Infinity};
+
+  const byWord=new Map();
+  for(const ex of all){
+    if(!ex?.word||!ex?.q?.length)continue;
+    const durRatio=Math.max(fp.duration||1,ex.duration||1)/
+      Math.max(.05,Math.min(fp.duration||1,ex.duration||1));
+    if(durRatio>1.75)continue;
+
+    const d=acousticDtwDistance(fp,ex);
+    if(!Number.isFinite(d))continue;
+    const old=byWord.get(ex.word);
+    if(!old||d<old.distance)byWord.set(ex.word,{word:ex.word,distance:d,ex});
+  }
+
+  const ranked=[...byWord.values()].sort((a,b)=>a.distance-b.distance);
+  if(!ranked.length)return {word:'',distance:Infinity};
+
+  const best=ranked[0],second=ranked[1];
+  const limit=best.ex.confirmed?1.00:(best.ex.seed?.96:.92);
+  const margin=second?second.distance-best.distance:.25;
+
+  // A raw-audio prototype is deliberately used only for a short utterance.
+  // It must be acoustically close; "confirmed" does NOT mean "match anything."
+  if(best.distance<=limit&&(margin>=.07||best.distance<=.78)){
+    return {...best,margin,matched:true};
+  }
+  return {...best,margin,matched:false};
+}
+
+function seedBuiltInAcousticExamples(){
+  adaptiveProfile.acousticExamples=adaptiveProfile.acousticExamples||[];
+  const seed=BUILTIN_GOOD_HELLO_ACOUSTIC;
+  if(seed?.id&&!adaptiveProfile.acousticExamples.some(x=>x.id===seed.id)){
+    adaptiveProfile.acousticExamples.push(seed);
+  }
+}
+
+// ---------- adaptive local ML + context re-ranking ----------
+// This is intentionally small enough to run entirely in the browser. It uses:
+// 1) nearest-neighbor acoustic prototypes,
+// 2) an online phoneme-confusion matrix,
+// 3) sequence alignment so corrections can skip background words,
+// 4) a small bigram context model for re-ranking.
+// Nothing is uploaded; learned data stays in localStorage on this device.
+
+const ADAPTIVE_KEY='secretTranslatorAdaptiveObV7';
+const ADAPTIVE_MAX_EXAMPLES=520;
+
+const SEED_SENTENCES=[
+  'hello can you hear me okay',
+  'yes i can hear you but there is a lot of noise in this room',
+  'good i am testing the ob translator with a longer sentence now',
+  'the blue backpack is under the table next to the water bottle',
+  'after school we should walk home and play a game together',
+  'i think this background noise makes the test much harder',
+  'this is the final sentence i hope the translator gets every word',
+  'hello how are you',
+  'this is a test'
+];
+
+function defaultAdaptiveProfile(){
+  return {version:7,uses:0,confirmed:0,examples:[],acousticExamples:[],phonePairs:{},bigrams:{},seeded:false};
+}
+function loadAdaptiveProfile(){
+  try{
+    const p=JSON.parse(localStorage.getItem(ADAPTIVE_KEY)||'null');
+    if(!p||p.version!==7)return defaultAdaptiveProfile();
+    p.examples=Array.isArray(p.examples)?p.examples:[];
+    p.acousticExamples=Array.isArray(p.acousticExamples)?p.acousticExamples:[];
+    p.phonePairs=p.phonePairs||{};
+    p.bigrams=p.bigrams||{};
+    p.uses=Number(p.uses)||0;
+    p.confirmed=Number(p.confirmed)||0;
+    p.seeded=!!p.seeded;
+    return p;
+  }catch{return defaultAdaptiveProfile()}
+}
+let adaptiveProfile=loadAdaptiveProfile();
+
+let sharedSyncStatus='connecting';
+let sharedSyncTimer=null;
+let sharedSyncInFlight=false;
+let sharedSyncDirty=false;
+
+function profileExampleKey(ex){
+  return `${String(ex?.word||'').toLowerCase()}|${(ex?.phones||[]).join(' ')}`;
+}
+function mergeAdaptiveProfiles(a,b){
+  const left=(a&&a.version===7)?a:defaultAdaptiveProfile();
+  const right=(b&&b.version===7)?b:defaultAdaptiveProfile();
+  const out=defaultAdaptiveProfile();
+
+  out.seeded=!!(left.seeded||right.seeded);
+  out.uses=Math.max(Number(left.uses)||0,Number(right.uses)||0);
+  out.confirmed=Math.max(Number(left.confirmed)||0,Number(right.confirmed)||0);
+
+  const examples=new Map();
+  for(const ex of [...(left.examples||[]),...(right.examples||[])]){
+    if(!ex?.word||!Array.isArray(ex.phones)||!ex.phones.length)continue;
+    const key=profileExampleKey(ex);
+    const old=examples.get(key);
+    if(!old){
+      examples.set(key,{
+        word:String(ex.word).toLowerCase(),
+        phones:ex.phones.map(String),
+        weight:Math.max(.01,Number(ex.weight)||1),
+        confirmed:!!ex.confirmed,
+        seed:!!ex.seed,
+        time:Number(ex.time)||0
+      });
+    }else{
+      old.weight=Math.max(old.weight,Number(ex.weight)||1);
+      old.confirmed=old.confirmed||!!ex.confirmed;
+      old.seed=old.seed||!!ex.seed;
+      old.time=Math.max(old.time,Number(ex.time)||0);
+    }
+  }
+  out.examples=[...examples.values()]
+    .sort((x,y)=>(Number(y.confirmed)-Number(x.confirmed))||(y.weight-x.weight)||(y.time-x.time))
+    .slice(0,ADAPTIVE_MAX_EXAMPLES);
+
+
+  const acoustic=new Map();
+  for(const ex of [...(left.acousticExamples||[]),...(right.acousticExamples||[])]){
+    if(!ex?.id||!ex?.word||!Array.isArray(ex.q)||!ex.q.length)continue;
+    const old=acoustic.get(ex.id);
+    const clean={
+      id:String(ex.id),
+      word:String(ex.word).toLowerCase(),
+      dims:Number(ex.dims)||13,
+      frameCount:Number(ex.frameCount)||0,
+      q:ex.q.map(Number),
+      duration:Number(ex.duration)||0,
+      weight:Math.max(.01,Number(ex.weight)||1),
+      confirmed:!!ex.confirmed,
+      seed:!!ex.seed,
+      time:Number(ex.time)||0,
+      source:String(ex.source||'')
+    };
+    if(!old)acoustic.set(clean.id,clean);
+    else{
+      old.weight=Math.max(old.weight,clean.weight);
+      old.confirmed=old.confirmed||clean.confirmed;
+      old.seed=old.seed||clean.seed;
+      old.time=Math.max(old.time,clean.time);
+    }
+  }
+  out.acousticExamples=[...acoustic.values()]
+    .sort((x,y)=>(Number(y.confirmed)-Number(x.confirmed))||(y.weight-x.weight)||(y.time-x.time))
+    .slice(0,64);
+
+  for(const src of [left.phonePairs||{},right.phonePairs||{}]){
+    for(const [k,v] of Object.entries(src)){
+      const n=Math.max(0,Number(v)||0);
+      out.phonePairs[k]=Math.max(out.phonePairs[k]||0,n);
+    }
+  }
+  for(const src of [left.bigrams||{},right.bigrams||{}]){
+    for(const [k,v] of Object.entries(src)){
+      const n=Math.max(0,Number(v)||0);
+      out.bigrams[k]=Math.max(out.bigrams[k]||0,n);
+    }
+  }
+  return out;
+}
+
+function updateSharedSyncStatus(status){
+  sharedSyncStatus=status;
+  updateLearningStats();
+}
+
+async function pullSharedLearning(){
+  try{
+    const r=await fetch('/api/learning',{cache:'no-store'});
+    if(!r.ok){
+      updateSharedSyncStatus('offline');
+      return false;
+    }
+    const data=await r.json();
+    if(data?.profile?.version===7){
+      adaptiveProfile=mergeAdaptiveProfiles(adaptiveProfile,data.profile);
+      saveAdaptiveProfile({remote:false});
+    }
+    updateSharedSyncStatus(data?.storage==='memory'?'temporary':'connected');
+    return true;
+  }catch(err){
+    console.warn('Shared learning pull failed',err);
+    updateSharedSyncStatus('offline');
+    return false;
+  }
+}
+
+async function pushSharedLearning(){
+  if(sharedSyncInFlight){
+    sharedSyncDirty=true;
+    return;
+  }
+  sharedSyncInFlight=true;
+  sharedSyncDirty=false;
+  try{
+    const r=await fetch('/api/learning',{
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({profile:adaptiveProfile})
+    });
+    if(!r.ok){
+      updateSharedSyncStatus('offline');
+      return;
+    }
+    const data=await r.json();
+    if(data?.profile?.version===7){
+      adaptiveProfile=mergeAdaptiveProfiles(adaptiveProfile,data.profile);
+      saveAdaptiveProfile({remote:false});
+    }
+    updateSharedSyncStatus(data?.storage==='memory'?'temporary':'connected');
+  }catch(err){
+    console.warn('Shared learning push failed',err);
+    updateSharedSyncStatus('offline');
+  }finally{
+    sharedSyncInFlight=false;
+    if(sharedSyncDirty)scheduleSharedSync(300);
+  }
+}
+
+function scheduleSharedSync(delay=1200){
+  sharedSyncDirty=true;
+  clearTimeout(sharedSyncTimer);
+  sharedSyncTimer=setTimeout(()=>pushSharedLearning(),delay);
+}
+
+async function initSharedLearning(){
+  updateSharedSyncStatus('connecting');
+  const pulled=await pullSharedLearning();
+  if(pulled)scheduleSharedSync(450);
+}
+
+
+function saveAdaptiveProfile(options={}){
+  adaptiveProfile.examples=adaptiveProfile.examples
+    .sort((a,b)=>(b.weight||0)-(a.weight||0)||(b.time||0)-(a.time||0))
+    .slice(0,ADAPTIVE_MAX_EXAMPLES);
+  adaptiveProfile.acousticExamples=(adaptiveProfile.acousticExamples||[])
+    .sort((a,b)=>(Number(b.confirmed)-Number(a.confirmed))||(b.weight||0)-(a.weight||0)||(b.time||0)-(a.time||0))
+    .slice(0,64);
+  try{localStorage.setItem(ADAPTIVE_KEY,JSON.stringify(adaptiveProfile))}catch{}
+  updateLearningStats();
+  if(options.remote!==false)scheduleSharedSync();
+}
+function normalizedPhoneArray(seq){
+  return seq.map(x=>normalizePhoneme(x.p??x)).filter(p=>p&&p!=='|');
+}
+function basePhonesForWord(word){
+  return buildPhoneIndex().wordToBases?.get(String(word||'').toLowerCase())||[];
+}
+function expectedObPhoneOptions(word){
+  return basePhonesForWord(word).map(encodedObPhones);
+}
+function variantObPhones(base,insertVowel='ə',stop='b'){
+  const out=[];
+  for(const p of base){
+    if(isVowelPhoneme(p))out.push(insertVowel,stop);
+    out.push(p);
+  }
+  return out;
+}
+function addSeedPrototype(word,phones,weight=.72){
+  adaptiveProfile.examples.push({
+    word:String(word).toLowerCase(),phones:[...phones],weight,
+    confirmed:false,seed:true,time:1
+  });
+}
+function seedAdaptiveProfile(){
+  if(adaptiveProfile.seeded)return;
+
+  const words=[...new Set(SEED_SENTENCES.join(' ').match(/[a-z']+/g)||[])];
+  for(const word of words){
+    const bases=basePhonesForWord(word);
+    for(const base of bases.slice(0,2)){
+      // Several plausible ways the phoneme model may hear spoken "ob".
+      addSeedPrototype(word,variantObPhones(base,'ə','b'));
+      addSeedPrototype(word,variantObPhones(base,'ʌ','b'),.62);
+      addSeedPrototype(word,variantObPhones(base,'ɑ','b'),.58);
+      addSeedPrototype(word,variantObPhones(base,'oʊ','b'),.56);
+      addSeedPrototype(word,variantObPhones(base,'ə','p'),.52);
+    }
+  }
+
+  for(const sentence of SEED_SENTENCES){
+    const ws=sentence.match(/[a-z']+/g)||[];
+    for(let i=1;i<ws.length;i++){
+      const key=ws[i-1]+'|'+ws[i];
+      adaptiveProfile.bigrams[key]=(adaptiveProfile.bigrams[key]||0)+1.25;
+    }
+  }
+
+  adaptiveProfile.seeded=true;
+  saveAdaptiveProfile();
+}
+
+function learnedBigramBonus(prev,word){
+  if(!prev||!word)return 0;
+  const n=adaptiveProfile.bigrams[prev+'|'+word]||0;
+  return Math.min(11,Math.log1p(n)*3.5);
+}
+function addBigramLearning(words,weight=1){
+  for(let i=1;i<words.length;i++){
+    const key=words[i-1]+'|'+words[i];
+    adaptiveProfile.bigrams[key]=(adaptiveProfile.bigrams[key]||0)+weight;
+  }
+}
+function alignPhoneSequences(obs,expected){
+  const n=obs.length,m=expected.length;
+  const dp=Array.from({length:n+1},()=>new Float32Array(m+1));
+  const bt=Array.from({length:n+1},()=>new Int8Array(m+1));
+  for(let i=1;i<=n;i++){dp[i][0]=i*.82;bt[i][0]=1}
+  for(let j=1;j<=m;j++){dp[0][j]=j*.82;bt[0][j]=2}
+
+  for(let i=1;i<=n;i++){
+    for(let j=1;j<=m;j++){
+      const sub=dp[i-1][j-1]+basePhoneSubCost(obs[i-1],expected[j-1]);
+      const del=dp[i-1][j]+.82;
+      const ins=dp[i][j-1]+.82;
+      if(sub<=del&&sub<=ins){dp[i][j]=sub;bt[i][j]=0}
+      else if(del<=ins){dp[i][j]=del;bt[i][j]=1}
+      else{dp[i][j]=ins;bt[i][j]=2}
+    }
+  }
+
+  const pairs=[];let i=n,j=m;
+  while(i>0||j>0){
+    const op=bt[i][j];
+    if(i>0&&j>0&&op===0){pairs.push([obs[i-1],expected[j-1]]);i--;j--}
+    else if(i>0&&(j===0||op===1))i--;
+    else j--;
+  }
+  pairs.reverse();
+  return {distance:dp[n][m],pairs};
+}
+function learnPhoneConfusions(obs,expected,weight=1){
+  const aligned=alignPhoneSequences(obs,expected);
+  for(const [heard,wanted] of aligned.pairs){
+    if(heard===wanted)continue;
+    const key=heard+'|'+wanted;
+    adaptiveProfile.phonePairs[key]=(adaptiveProfile.phonePairs[key]||0)+weight;
+  }
+}
+function adaptivePairMultiplier(heard,wanted){
+  const n=adaptiveProfile.phonePairs[heard+'|'+wanted]||0;
+  if(!n)return 1;
+  return Math.max(.30,1/(1+Math.log1p(n)*.55));
+}
+function addLearnedPrototype(word,phones,weight=1,confirmed=false){
+  word=String(word||'').toLowerCase();
+  phones=normalizedPhoneArray(phones);
+  if(!word||!phones.length)return;
+
+  let nearest=null,nearestNorm=Infinity;
+  for(const ex of adaptiveProfile.examples){
+    if(ex.word!==word||ex.seed)continue;
+    const d=weightedPhoneDistance(phones,ex.phones)/Math.max(phones.length,ex.phones.length,1);
+    if(d<nearestNorm){nearest=ex;nearestNorm=d}
+  }
+
+  if(nearest&&nearestNorm<.15){
+    nearest.weight=Math.min(24,(nearest.weight||1)+weight);
+    nearest.time=Date.now();
+    if(confirmed)nearest.confirmed=true;
+  }else{
+    adaptiveProfile.examples.push({
+      word,phones:[...phones],weight:Math.min(24,weight),
+      confirmed:!!confirmed,seed:false,time:Date.now()
+    });
+  }
+}
+function matchLearnedObWord(seq){
+  const obs=normalizedPhoneArray(seq);
+  if(!obs.length||!adaptiveProfile.examples.length)return {word:'',score:0,learned:false};
+
+  let best=null,second=null;
+  for(const ex of adaptiveProfile.examples){
+    const exPhones=normalizedPhoneArray(ex.phones||[]);
+    if(!exPhones.length)continue;
+
+    const lengthRatio=Math.max(obs.length,exPhones.length)/Math.max(1,Math.min(obs.length,exPhones.length));
+    if(lengthRatio>(ex.confirmed?1.36:1.30))continue;
+
+    const d=baseWeightedPhoneDistance(obs,exPhones);
+    const norm=d/Math.max(obs.length,exPhones.length,1);
+    const normLimit=ex.confirmed?.34:(ex.seed?.31:.32);
+    if(norm>normLimit)continue;
+
+    let score=112-norm*150;
+    score+=Math.min(6,Math.log1p(ex.weight||1)*1.7);
+    if(ex.confirmed)score+=4;
+    if(ex.seed)score-=2;
+    if(COMMON.has(ex.word))score+=1;
+
+    const hit={word:ex.word,score,norm,weight:ex.weight||1,confirmed:!!ex.confirmed,seed:!!ex.seed,learned:true};
+    if(!best||score>best.score){second=best;best=hit}
+    else if(!second||score>second.score)second=hit;
+  }
+
+  if(best){
+    best.margin=second?best.score-second.score:16;
+    const minScore=best.confirmed?67:(best.seed?72:70);
+    const minMargin=best.confirmed?4.5:5.5;
+    if(best.score>=minScore&&(best.margin>=minMargin||best.score>=93))return best;
+  }
+  return {word:'',score:best?.score||0,learned:false};
+}
+
+function adaptiveAlignment(groups,words){
+  const G=groups.map(normalizedPhoneArray),W=words.map(w=>String(w).toLowerCase());
+  const n=G.length,m=W.length,INF=1e9;
+  const dp=Array.from({length:n+1},()=>Array(m+1).fill(INF));
+  const bt=Array.from({length:n+1},()=>Array(m+1).fill(null));
+  dp[0][0]=0;
+
+  for(let i=0;i<=n;i++){
+    for(let j=0;j<=m;j++){
+      const cur=dp[i][j];
+      if(cur>=INF)continue;
+
+      if(i<n&&cur+1.05<dp[i+1][j]){
+        dp[i+1][j]=cur+1.05;bt[i+1][j]={i,j,type:'skipGroup'};
+      }
+      if(j<m&&cur+3.6<dp[i][j+1]){
+        dp[i][j+1]=cur+3.6;bt[i][j+1]={i,j,type:'skipWord'};
+      }
+      if(i<n&&j<m){
+        const options=expectedObPhoneOptions(W[j]);
+        if(options.length){
+          let d=Infinity,bestExpected=null;
+          for(const expected of options){
+            const dd=baseWeightedPhoneDistance(G[i],expected)/Math.max(G[i].length,expected.length,1);
+            if(dd<d){d=dd;bestExpected=expected}
+          }
+          const matchCost=d*2.25;
+          if(cur+matchCost<dp[i+1][j+1]){
+            dp[i+1][j+1]=cur+matchCost;
+            bt[i+1][j+1]={i,j,type:'match',expected:bestExpected,norm:d};
+          }
+        }
+      }
+    }
+  }
+
+  const matches=[];let i=n,j=m;
+  while(i>0||j>0){
+    const b=bt[i][j];if(!b)break;
+    if(b.type==='match')matches.push({groupIndex:b.i,wordIndex:b.j,norm:b.norm,expected:b.expected});
+    i=b.i;j=b.j;
+  }
+  matches.reverse();
+  return matches;
+}
+
+function flattenTeachingGroups(groups){
+  const out=[];
+  for(const g of groups||[]){
+    const p=normalizedPhoneArray(g);
+    if(!p.length)continue;
+    if(out.length)out.push('|');
+    out.push(...p);
+  }
+  return out;
+}
+
+function teachingWindowsForWord(word,groups){
+  const expectedOptions=expectedObPhoneOptions(word);
+  if(!expectedOptions.length)return [];
+
+  const candidates=[];
+
+  // Search every individual phone group first.
+  for(let gi=0;gi<(groups||[]).length;gi++){
+    const phones=normalizedPhoneArray(groups[gi]);
+    if(!phones.length)continue;
+
+    for(const expected of expectedOptions){
+      const minLen=Math.max(3,Math.floor(expected.length*.55));
+      const maxLen=Math.min(phones.length,Math.ceil(expected.length*1.65));
+
+      // Whole group candidate.
+      if(phones.length>=minLen&&phones.length<=Math.max(maxLen,expected.length+6)){
+        const norm=baseWeightedPhoneDistance(phones,expected)/
+          Math.max(phones.length,expected.length,1);
+        candidates.push({phones:[...phones],norm,groupIndex:gi,whole:true});
+      }
+
+      // Window candidates repair groups that include leading/trailing filler.
+      for(let start=0;start<phones.length;start++){
+        for(let len=minLen;len<=maxLen&&start+len<=phones.length;len++){
+          const w=phones.slice(start,start+len);
+          const norm=baseWeightedPhoneDistance(w,expected)/
+            Math.max(w.length,expected.length,1);
+          candidates.push({phones:w,norm,groupIndex:gi,start,len,whole:false});
+        }
+      }
+    }
+  }
+
+  // If CTC split one word into several groups, search a flattened stream too.
+  const flat=flattenTeachingGroups(groups).filter(x=>x!=='|');
+  if(flat.length){
+    for(const expected of expectedOptions){
+      const minLen=Math.max(3,Math.floor(expected.length*.55));
+      const maxLen=Math.min(flat.length,Math.ceil(expected.length*1.8));
+      for(let start=0;start<flat.length;start++){
+        for(let len=minLen;len<=maxLen&&start+len<=flat.length;len++){
+          const w=flat.slice(start,start+len);
+          const norm=baseWeightedPhoneDistance(w,expected)/
+            Math.max(w.length,expected.length,1);
+          candidates.push({phones:w,norm,groupIndex:-1,start,len,whole:false,flat:true});
+        }
+      }
+    }
+  }
+
+  candidates.sort((a,b)=>a.norm-b.norm || a.phones.length-b.phones.length);
+
+  // Deduplicate almost-identical candidates.
+  const out=[];
+  for(const c of candidates){
+    const key=c.phones.join(' ');
+    if(out.some(x=>x.phones.join(' ')===key))continue;
+    out.push(c);
+    if(out.length>=8)break;
+  }
+  return out;
+}
+
+function teachSingleWordFromRecording(word,groups,weight=4.5){
+  word=String(word||'').toLowerCase();
+  const candidates=teachingWindowsForWord(word,groups);
+
+  if(candidates.length){
+    const best=candidates[0];
+
+    // Because the user explicitly labelled this short recording, we can store
+    // the best observed acoustic window even when it is much farther from the
+    // dictionary pronunciation than normal recognition would allow.
+    // Recognition later is STILL strict and must closely match this prototype,
+    // which prevents "hello" from taking over unrelated sounds.
+    if(best.norm<=1.18){
+      addLearnedPrototype(word,best.phones,weight,true);
+
+      // Save one alternate only when it is nearly as plausible, which helps
+      // if the recognizer split the same utterance two different ways.
+      const alt=candidates.slice(1).find(x=>
+        x.norm<=Math.min(1.05,best.norm+.12) &&
+        weightedPhoneDistance(x.phones,best.phones)/
+          Math.max(x.phones.length,best.phones.length,1)>.10
+      );
+      if(alt)addLearnedPrototype(word,alt.phones,weight*.55,true);
+
+      return {learned:1,total:1,norm:best.norm,method:'single-word-window'};
+    }
+  }
+
+  // Last-resort explicit teaching: if the user recorded only one word but the
+  // phoneme model produced a very strange segmentation, save the most
+  // information-rich group. Strict recognition gates protect against overfit.
+  const ranked=(groups||[])
+    .map(g=>normalizedPhoneArray(g))
+    .filter(g=>g.length>=3)
+    .map(g=>({
+      phones:g,
+      info:g.filter(p=>!isVowelPhoneme(p)&&p!=='h'&&p!=='m'&&p!=='n'&&p!=='ŋ').length
+    }))
+    .sort((a,b)=>b.info-a.info || b.phones.length-a.phones.length);
+
+  if(ranked.length){
+    addLearnedPrototype(word,ranked[0].phones,weight,true);
+    return {learned:1,total:1,norm:null,method:'single-word-explicit'};
+  }
+
+  return {learned:0,total:1,method:'no-phones'};
+}
+
+function learnFromCorrection(text,weight=3){
+  const words=String(text||'').toLowerCase().match(/[a-z']+/g)||[];
+  if(!words.length)return {learned:0,total:0};
+
+  // MOST IMPORTANT FIX:
+  // A single-word correction can be learned from the RAW AUDIO fingerprint
+  // even when the phoneme recognizer returned zero usable groups.
+  if(words.length===1&&lastObAudioFingerprint){
+    const word=words[0];
+    const acousticSaved=addAcousticPrototype(
+      word,lastObAudioFingerprint,Math.max(6,weight),true,'fix-and-teach-raw-audio'
+    );
+
+    // Phoneme teaching is now optional extra information, not a prerequisite.
+    let phoneLearned=0;
+    if(lastObGroups.length){
+      const t=teachSingleWordFromRecording(word,lastObGroups,Math.max(4.5,weight));
+      phoneLearned=t.learned||0;
+    }
+
+    if(acousticSaved||phoneLearned){
+      adaptiveProfile.uses++;
+      adaptiveProfile.confirmed++;
+      saveAdaptiveProfile();
+      return {
+        learned:1,total:1,
+        method:acousticSaved?(phoneLearned?'raw-audio+phoneme':'raw-audio'):'phoneme'
+      };
+    }
+  }
+
+  if(!lastObGroups.length)return {learned:0,total:words.length};
+
+  if(words.length===1){
+    const taught=teachSingleWordFromRecording(words[0],lastObGroups,Math.max(4.5,weight));
+    if(taught.learned){
+      adaptiveProfile.uses++;
+      adaptiveProfile.confirmed++;
+      saveAdaptiveProfile();
+    }
+    return taught;
+  }
+
+  const matches=adaptiveAlignment(lastObGroups,words);
+  let learned=0;
+
+  for(const m of matches){
+    if(m.norm>.82)continue;
+    const phones=lastObGroups[m.groupIndex],word=words[m.wordIndex];
+    addLearnedPrototype(word,phones,weight,true);
+    learned++;
+  }
+
+  if(learned){
+    addBigramLearning(words,Math.min(weight,2.5));
+    adaptiveProfile.uses++;
+    adaptiveProfile.confirmed++;
+    saveAdaptiveProfile();
+  }
+
+  return {learned,total:words.length};
+}
+function autoLearnHighConfidence(entries){
+  const seen=new Set();
+  const strong=entries.filter(e=>{
+    if(!e.keep||!e.base)return false;
+    if(seen.has(e.base))return false;
+
+    const source=String(e.source||'');
+    const independentlySupported =
+      source.includes('dictionary') ||
+      source.includes('ob-whole-word');
+
+    if(!independentlySupported)return false;
+    if((e.contrast||0)<34||(e.score||0)<94)return false;
+
+    seen.add(e.base);
+    return true;
+  });
+
+  for(const e of strong){
+    const phones=String(e.phones||'').split(' ').filter(Boolean);
+    if(phones.length)addLearnedPrototype(e.base,phones,.06,false);
+  }
+
+  if(strong.length){
+    adaptiveProfile.uses++;
+    saveAdaptiveProfile();
+  }
+}
+function updateLearningStats(){
+  if(typeof learnStats==='undefined'||!learnStats)return;
+
+  const phoneExamples=adaptiveProfile.examples.filter(x=>!x.seed).length;
+  const acousticExamples=(adaptiveProfile.acousticExamples||[]).filter(x=>!x.seed).length;
+  const syncText=
+    sharedSyncStatus==='connected' ? 'Shared across devices ✓' :
+    sharedSyncStatus==='temporary' ? 'Shared across devices (temporary) ✓' :
+    sharedSyncStatus==='connecting' ? 'Connecting shared learning…' :
+    'Shared sync temporarily offline';
+
+  learnStats.textContent=
+    `${syncText} · ${acousticExamples} raw-audio example${acousticExamples===1?'':'s'} · `+
+    `${phoneExamples} phoneme example${phoneExamples===1?'':'s'} · `+
+    `${adaptiveProfile.confirmed} confirmed correction${adaptiveProfile.confirmed===1?'':'s'}`;
+}
+function showLearningUI(show=true){
+  if(!learnCard)return;
+  learnCard.classList.toggle('hidden',!show);
+  fixPanel.classList.add('hidden');
+  updateLearningStats();
+}
+
+// ---------- Ob-aware phoneme → English decoding ----------
+let PHONE_INDEX=null;
+const SIMILAR_PHONE_PAIRS=new Set(['b|p','p|b','t|d','d|t','k|ɡ','ɡ|k','s|z','z|s','f|v','v|f','θ|ð','ð|θ','ʃ|ʒ','ʒ|ʃ','t͡ʃ|d͡ʒ','d͡ʒ|t͡ʃ']);
+
+function splitPhoneWordsSmart(tokens){
+  const words=[],current=[];
+  let previous=null;
+  const flush=()=>{if(current.length)words.push(current.splice(0))};
+  for(const t0 of tokens){
+    const p=normalizePhoneme(t0.p),t={...t0,p};
+    if(!p)continue;
+    if(p==='|'){flush();previous=null;continue}
+    if(previous){
+      const gap=Math.max(0,(t.start||0)-(previous.end||0));
+      // The CTC model sometimes misses the explicit | token but leaves a blank gap.
+      if(gap>.105&&current.length>=2)flush();
+    }
+    current.push(t);previous=t;
+  }
+  flush();
+  return words;
+}
+function countObEvidence(seq){
+  let n=0;
+  for(let i=0;i+2<seq.length;i++){
+    const a=normalizePhoneme(seq[i].p??seq[i]),b=normalizePhoneme(seq[i+1].p??seq[i+1]),c=normalizePhoneme(seq[i+2].p??seq[i+2]);
+    if(isObVowelPhoneme(a)&&(b==='b'||b==='p')&&isVowelPhoneme(c)){n++;i++}
+  }
+  return n;
+}
+function stripObPhonePairs(word){
+  const out=[];let removed=0;
+  for(let i=0;i<word.length;i++){
+    const p=normalizePhoneme(word[i].p??word[i]),q=i+1<word.length?normalizePhoneme(word[i+1].p??word[i+1]):'',r=i+2<word.length?normalizePhoneme(word[i+2].p??word[i+2]):'';
+    if(isObVowelPhoneme(p)&&(q==='b'||q==='p')&&isVowelPhoneme(r)){removed++;i++;continue}
+    out.push(word[i]);
+  }
+  return {phones:out,removed};
+}
+function encodedObPhones(base){
+  const out=[];
+  for(const p of base){if(isVowelPhoneme(p))out.push('ə','b');out.push(p)}
+  return out;
+}
+function observedStartKey(obs){
+  if(!obs.length)return '';
+  const a=normalizePhoneme(obs[0].p??obs[0]),b=obs[1]?normalizePhoneme(obs[1].p??obs[1]):'',c=obs[2]?normalizePhoneme(obs[2].p??obs[2]):'';
+  if(isObVowelPhoneme(a)&&(b==='b'||b==='p')&&isVowelPhoneme(c))return 'V';
+  return isVowelPhoneme(a)?'V':a;
+}
+function buildPhoneIndex(){
+  if(PHONE_INDEX)return PHONE_INDEX;
+  const lex=window.PHONEME_LEXICON||{},normalByLenFirst=new Map(),obByLenFirst=new Map(),wordToBases=new Map();
+
+  for(const [key,word] of Object.entries(lex)){
+    const base=key.split(' '),first=isVowelPhoneme(base[0])?'V':base[0],
+      encLen=base.length+2*base.filter(isVowelPhoneme).length;
+
+    const nk=base.length+'|'+first,ok=encLen+'|'+first;
+    if(!normalByLenFirst.has(nk))normalByLenFirst.set(nk,[]);
+    normalByLenFirst.get(nk).push({base,word});
+    if(!obByLenFirst.has(ok))obByLenFirst.set(ok,[]);
+    obByLenFirst.get(ok).push({base,word});
+
+    const w=String(word||'').toLowerCase();
+    if(!wordToBases.has(w))wordToBases.set(w,[]);
+    wordToBases.get(w).push(base);
+  }
+
+  PHONE_INDEX={lex,normalByLenFirst,obByLenFirst,wordToBases};
+  return PHONE_INDEX;
+}
+function basePhoneSubCost(a,b){
+  a=normalizePhoneme(a);b=normalizePhoneme(b);
+  if(a===b)return 0;
+  if(isVowelPhoneme(a)&&isVowelPhoneme(b))return .28;
+  if(SIMILAR_PHONE_PAIRS.has(a+'|'+b))return .42;
+  if((a==='ɹ'&&b==='l')||(a==='l'&&b==='ɹ'))return .62;
+  if((a==='m'&&b==='n')||(a==='n'&&b==='m'))return .65;
+  return 1.05;
+}
+function phoneSubCost(a,b){
+  // IMPORTANT: user corrections do not globally rewrite the phone metric.
+  // A correction for "hello" should teach HELLO only, not make unrelated
+  // sounds more likely to become hello or any other word.
+  return basePhoneSubCost(a,b);
+}
+function baseWeightedPhoneDistance(a,b){
+  const m=b.length,prev=new Float32Array(m+1),cur=new Float32Array(m+1);
+  for(let j=0;j<=m;j++)prev[j]=j*.82;
+  for(let i=1;i<=a.length;i++){
+    cur[0]=i*.82;
+    for(let j=1;j<=m;j++){
+      cur[j]=Math.min(prev[j]+.82,cur[j-1]+.82,prev[j-1]+basePhoneSubCost(a[i-1],b[j-1]));
+    }
+    prev.set(cur);
+  }
+  return prev[m];
+}
+function weightedPhoneDistance(a,b){
+  const m=b.length,prev=new Float32Array(m+1),cur=new Float32Array(m+1);
+  for(let j=0;j<=m;j++)prev[j]=j*.82;
+  for(let i=1;i<=a.length;i++){
+    cur[0]=i*.82;
+    for(let j=1;j<=m;j++){
+      cur[j]=Math.min(prev[j]+.82,cur[j-1]+.82,prev[j-1]+phoneSubCost(a[i-1],b[j-1]));
+    }
+    prev.set(cur);
+  }
+  return prev[m];
+}
+function roughPhoneWord(seq){
+  const map={'aɪ':'i','aʊ':'ow','eɪ':'ay','i':'ee','oʊ':'o','u':'oo','æ':'a','ɑ':'a','ɔ':'aw','ɔɪ':'oy','ə':'a','ɚ':'er','ɛ':'e','ɪ':'i','ʊ':'u','ʌ':'u','b':'b','d':'d','d͡ʒ':'j','f':'f','h':'h','j':'y','k':'k','l':'l','m':'m','n':'n','p':'p','s':'s','t':'t','t͡ʃ':'ch','v':'v','w':'w','z':'z','ð':'th','ŋ':'ng','ɡ':'g','ɹ':'r','ʃ':'sh','ʒ':'zh','θ':'th'};
+  return seq.map(x=>map[normalizePhoneme(x.p??x)]||'').join('');
+}
+
+function matchNormalWord(seq){
+  const obs=seq.map(x=>normalizePhoneme(x.p??x)).filter(p=>p&&p!=='|');
+  if(!obs.length)return {word:'',score:0};
+  const idx=buildPhoneIndex(),exact=idx.lex[obs.join(' ')];
+  if(exact)return {word:exact,score:112+(COMMON.has(exact)?5:0),exact:true};
+
+  const first=isVowelPhoneme(obs[0])?'V':obs[0],candidates=[];
+  for(let delta=-2;delta<=2;delta++){
+    const len=obs.length+delta;if(len<1)continue;
+    candidates.push(...(idx.normalByLenFirst.get(len+'|'+first)||[]));
+  }
+  if(candidates.length<28){
+    for(let delta=-1;delta<=1;delta++){
+      const len=obs.length+delta;
+      for(const [bucketKey,bucket] of idx.normalByLenFirst){
+        if(bucketKey.startsWith(len+'|'))candidates.push(...bucket.slice(0,240));
+      }
+    }
+  }
+
+  let best=null,second=null;const seen=new Set();
+  for(const c of candidates){
+    const id=c.word+'|'+c.base.join(' ');if(seen.has(id))continue;seen.add(id);
+    const dist=weightedPhoneDistance(obs,c.base),norm=dist/Math.max(obs.length,c.base.length,1);
+    let score=100-norm*118+(COMMON.has(c.word)?7:0);
+    if(c.word.length===1&&c.word!=='a'&&c.word!=='i')score-=11;
+    if(!best||score>best.score){second=best;best={word:c.word,score,norm}}
+    else if(!second||score>second.score)second={word:c.word,score,norm};
+  }
+  if(best){
+    const margin=second?best.score-second.score:8;
+    best.score+=Math.min(4,Math.max(0,margin*.4));
+    if(best.score>=56||(COMMON.has(best.word)&&best.score>=49))return best;
+  }
+  return {word:'',score:best?.score||0,rough:roughPhoneWord(obs)};
+}
+
+const PHONE_LITERAL={
+  'aɪ':'i','aʊ':'ow','eɪ':'ay','i':'ee','oʊ':'o','u':'oo','æ':'a','ɑ':'o','ɔ':'o',
+  'ɔɪ':'oy','ə':'a','ɚ':'er','ɛ':'e','ɪ':'i','ʊ':'u','ʌ':'u',
+  'b':'b','d':'d','d͡ʒ':'j','f':'f','h':'h','j':'y','k':'k','l':'l','m':'m','n':'n',
+  'p':'p','s':'s','t':'t','t͡ʃ':'ch','v':'v','w':'w','z':'z','ð':'th','ŋ':'ng',
+  'ɡ':'g','ɹ':'r','ʃ':'sh','ʒ':'zh','θ':'th'
+};
+function phoneLiteralPiece(p){return PHONE_LITERAL[normalizePhoneme(p)]||''}
+
+function literalizeObservedWord(seq,markOb=false){
+  const phones=seq.map(x=>normalizePhoneme(x.p??x)).filter(p=>p&&p!=='|');
+  let out='';
+  for(let i=0;i<phones.length;){
+    const a=phones[i],b=phones[i+1]||'',c=phones[i+2]||'';
+    if(markOb&&isObVowelPhoneme(a)&&(b==='b'||b==='p')&&isVowelPhoneme(c)){
+      out+='ob';i+=2;continue;
+    }
+    out+=phoneLiteralPiece(a);i++;
+  }
+  return out||roughPhoneWord(phones);
+}
+
+function literalizeObGroup(group){
+  const evidence=countObEvidence(group);
+  const signal=obSignalStats(group);
+  const learnedHit=matchLearnedObWord(group);
+  const dictionaryHit=matchObWord(group);
+  const normalHit=matchNormalWord(group);
+
+  // The dictionary/acoustic model chooses the WORD. Learning is allowed to
+  // strengthen that same word, but a taught word cannot replace an unrelated
+  // dictionary hypothesis. The only exception is an almost-exact confirmed
+  // speaker prototype (norm <= .12), which rescues repeated unusual speech.
+  let obHit=dictionaryHit;
+  let learnedExactRescue=false;
+
+  if(learnedHit.word&&dictionaryHit.word&&learnedHit.word===dictionaryHit.word){
+    if(learnedHit.score>dictionaryHit.score){
+      obHit={...learnedHit,source:'adaptive-same-word'};
+    }
+  }else if(learnedHit.word&&learnedHit.confirmed&&learnedHit.norm<=.12){
+    obHit={...learnedHit,source:'adaptive-exact-rescue'};
+    learnedExactRescue=true;
+  }
+
+  const obWord=obHit.word||'',normalWord=normalHit.word||'';
+  let obScore=obHit.score||0,normalScore=normalHit.score||0;
+
+  obScore+=Math.min(18,evidence*7);
+  if(signal.likely)obScore+=8;
+  if(signal.bp>=2)obScore+=Math.min(6,signal.bp*1.4);
+  if(obWord&&COMMON.has(obWord))obScore+=3;
+  if(obHit.learned)obScore+=obHit.confirmed?4:1;
+
+  const contrast=obScore-normalScore;
+
+  const learnedStrong=!!obWord&&obHit.learned&&(
+    learnedExactRescue ||
+    (dictionaryHit.word===obWord&&obScore>=68&&contrast>=-1)
+  );
+
+  const dictionaryStrong=!!obWord&&dictionaryHit.word===obWord&&(
+    contrast>=7 ||
+    (evidence>0&&contrast>=0&&dictionaryHit.score>=54) ||
+    (signal.likely&&contrast>=2&&dictionaryHit.score>=56)
+  );
+
+  const keep=learnedStrong||dictionaryStrong;
+
+  if(keep){
+    return {
+      raw:encodeObWord(obWord).toLowerCase(),keep:true,
+      evidence:Math.max(evidence,signal.exact||0),base:obWord,obCandidate:obWord,
+      score:obScore,obScore,normalScore,contrast,
+      learnedNorm:learnedHit.word===obWord?learnedHit.norm:null,
+      source:learnedExactRescue?'adaptive-exact-rescue':(obHit.learned?'adaptive-same-word':'ob-whole-word')
+    };
+  }
+
+  const raw=(normalWord||literalizeObservedWord(group,false)).toLowerCase();
+  return {
+    raw,keep:false,evidence,base:normalWord||'',obCandidate:dictionaryHit.word||'',
+    score:normalScore,obScore,normalScore,contrast,
+    source:normalWord?'ordinary-word':'literal'
+  };
+}
+
+function scoreLiteralEntry(e){
+  if(!e)return -999;
+  return e.keep?(e.score||0)+12:Math.max(0,(e.score||0)-6);
+}
+
+function bestObCandidateForPhoneWindow(phoneWindow){
+  if(!phoneWindow||phoneWindow.length<3)return null;
+
+  const learned=matchLearnedObWord(phoneWindow);
+  const dictionary=matchObWord(phoneWindow);
+  const normal=matchNormalWord(phoneWindow);
+
+  let best=null;
+  if(dictionary?.word){
+    best={word:dictionary.word,score:dictionary.score||0,source:'window-dictionary',confirmed:false,norm:null};
+  }
+
+  if(learned?.word){
+    const sameWord=best?.word&&best.word===learned.word;
+    const exactRescue=learned.confirmed&&learned.norm<=.12;
+    if(sameWord&&learned.score>(best.score||0)){
+      best={word:learned.word,score:learned.score,source:'window-adaptive-same-word',confirmed:!!learned.confirmed,norm:learned.norm};
+    }else if(!sameWord&&exactRescue){
+      best={word:learned.word,score:learned.score,source:'window-adaptive-exact',confirmed:true,norm:learned.norm};
+    }
+  }
+  if(!best?.word)return null;
+
+  const normalScore=normal?.score||0;
+  const contrast=best.score-normalScore;
+  const signal=obSignalStats(phoneWindow);
+  const evidence=countObEvidence(phoneWindow);
+
+  let adjusted=best.score+Math.min(12,evidence*5);
+  if(signal.likely)adjusted+=6;
+  if(COMMON.has(best.word))adjusted+=2;
+
+  if(best.confirmed&&best.source==='window-adaptive-exact'&&best.norm>.12)return null;
+
+  const keep =
+    (best.source==='window-adaptive-exact'&&adjusted>=72) ||
+    (adjusted>=68&&contrast>=-2) ||
+    (evidence>0&&adjusted>=60&&contrast>=-5) ||
+    (signal.likely&&adjusted>=62&&contrast>=-4);
+
+  if(!keep)return null;
+  return {word:best.word,score:adjusted,contrast,source:best.source,confirmed:best.confirmed,norm:best.norm,evidence,signal};
+}
+
+function scanObWordsInsideGroup(group){
+  const phones=group.filter(x=>normalizePhoneme(x.p)!=='|');
+  const n=phones.length;
+  if(n<3)return [];
+
+  const hits=[];
+  const minLen=4,maxLen=Math.min(22,n);
+
+  for(let start=0;start<n;start++){
+    for(let len=minLen;len<=maxLen&&start+len<=n;len++){
+      const window=phones.slice(start,start+len);
+      const hit=bestObCandidateForPhoneWindow(window);
+      if(!hit)continue;
+
+      let finalScore=hit.score;
+      if(hit.confirmed)finalScore+=0;
+      finalScore-=Math.max(0,len-15)*.7;
+
+      hits.push({
+        ...hit,startIndex:start,endIndex:start+len,
+        finalScore,phones:window
+      });
+    }
+  }
+
+  if(!hits.length)return [];
+
+  hits.sort((a,b)=>b.finalScore-a.finalScore ||
+    (a.endIndex-a.startIndex)-(b.endIndex-b.startIndex));
+
+  const chosen=[];
+  const wordCounts=new Map();
+
+  for(const h of hits){
+    const overlaps=chosen.some(c=>!(h.endIndex<=c.startIndex||h.startIndex>=c.endIndex));
+    if(overlaps)continue;
+
+    // One phoneme group should almost never contain the same recognized word
+    // over and over. This directly prevents "hello hello hello..." collapse.
+    const count=wordCounts.get(h.word)||0;
+    if(count>=1)continue;
+
+    chosen.push(h);
+    wordCounts.set(h.word,count+1);
+    if(chosen.length>=6)break;
+  }
+
+  chosen.sort((a,b)=>a.startIndex-b.startIndex);
+  return chosen;
+}
+
+function rescueObEntriesFromRawGroups(rawGroups){
+  const rescued=[];
+
+  for(const groupPhones of rawGroups||[]){
+    const group=(groupPhones||[]).map((p,i)=>({p,start:i*.06,end:(i+1)*.06}));
+    if(group.length<3)continue;
+
+    // First try the entire group as one word.
+    const whole=literalizeObGroup(group);
+    if(whole.keep&&whole.base){
+      rescued.push({
+        ...whole,
+        raw:encodeObWord(whole.base).toLowerCase(),
+        source:whole.source+'-rescue',
+        phones:groupPhones.join(' ')
+      });
+      continue;
+    }
+
+    // Then keyword-spot inside a merged/noisy group.
+    const windows=scanObWordsInsideGroup(group);
+    for(const w of windows){
+      rescued.push({
+        raw:encodeObWord(w.word).toLowerCase(),
+        keep:true,
+        base:w.word,
+        obCandidate:w.word,
+        score:w.finalScore,
+        obScore:w.finalScore,
+        normalScore:w.finalScore-w.contrast,
+        contrast:w.contrast,
+        evidence:w.evidence,
+        source:w.source,
+        phones:w.phones.map(x=>x.p).join(' ')
+      });
+    }
+  }
+
+  // Remove accidental repeated detections of the same word caused by overlapping
+  // chunks while preserving real consecutive repeated words.
+  const out=[];
+  for(const e of rescued){
+    const prev=out[out.length-1];
+    if(prev&&prev.base===e.base&&prev.phones===e.phones)continue;
+    out.push(e);
+  }
+  return out;
+}
+
+function classifyObGroupWithBoundaryRescue(group){
+  const direct=literalizeObGroup(group),n=group.length;
+  if(n<10||direct.keep||(direct.score||0)>=72)return [direct];
+  let best={entries:[direct],score:scoreLiteralEntry(direct)};
+  for(let cut=3;cut<=n-3;cut++){
+    const left=literalizeObGroup(group.slice(0,cut));
+    const right=literalizeObGroup(group.slice(cut));
+    if(!left.raw||!right.raw)continue;
+    const score=scoreLiteralEntry(left)+scoreLiteralEntry(right)+(left.keep||right.keep?5:0);
+    if(score>best.score+7)best={entries:[left,right],score};
+  }
+  return best.entries;
+}
+
+function literalizeCrackGroup(group){
+  // Crack New must NOT "correct" invented words into ordinary English.
+  // Exact/very-strong normal words (including spoken number words) are safe;
+  // everything else stays as literal phonetic spelling so repeated patterns survive.
+  const normal=matchNormalWord(group);
+  if(normal.exact||normal.score>=104){
+    return {raw:normal.word.toLowerCase(),source:'normal-exact',score:normal.score};
+  }
+  return {raw:literalizeObservedWord(group,false).toLowerCase(),source:'literal',score:normal.score||0};
+}
+
+const OB_FILLER_TOKENS=new Set(['a','ah','uh','um','umm','mm','mmm','hm','hmm','eh','er','oh','ooh','huh']);
+function isLowInformationObGroup(group){
+  const p=(group||[]).map(x=>normalizePhoneme(x.p??x)).filter(Boolean);
+  if(!p.length)return true;
+
+  // Real spoken Ob vowel syllables contain the inserted stop /b/ (sometimes
+  // heard as /p/). Tiny vowel/hum fragments without either stop are the source
+  // of the repeated "ah / uh / mm" garbage.
+  if(p.length<3)return true;
+
+  const bp=p.filter(x=>x==='b'||x==='p').length;
+  const lowInfo=p.filter(x=>isVowelPhoneme(x)||x==='h'||x==='m'||x==='n'||x==='ŋ').length;
+
+  if(bp===0&&p.length<=6&&lowInfo/p.length>=.66)return true;
+
+  const consonants=p.filter(x=>!isVowelPhoneme(x)&&x!=='|');
+  if(p.length<=5&&consonants.every(x=>x==='h'||x==='m'||x==='n'||x==='ŋ'))return true;
+
+  return false;
+}
+function isBogusObFillerEntry(e){
+  if(e?.keep)return false;
+  const raw=String(e?.raw||'').toLowerCase().replace(/[^a-z]/g,'');
+  if(!raw)return true;
+  if(OB_FILLER_TOKENS.has(raw))return true;
+  return raw.length<=2&&/^[aeiouhmy]+$/.test(raw);
+}
+
+function makeLiteralChunks(audio,sr=16000,maxSeconds=5.2,overlap=.14){
+  const max=Math.floor(maxSeconds*sr),step=Math.max(1,Math.floor((maxSeconds-overlap)*sr)),out=[];
+  if(audio.length<=max)return [{audio,start:0,end:audio.length/sr,duration:audio.length/sr}];
+  for(let s=0;s<audio.length;s+=step){
+    const e=Math.min(audio.length,s+max),clip=audio.slice(s,e);
+    if(clip.length>=Math.floor(.18*sr))out.push({audio:clip,start:s/sr,end:e/sr,duration:clip.length/sr});
+    if(e===audio.length)break;
+  }
+  return out;
+}
+
+function temporalOverlapRatio(a,b){
+  const start=Math.max(Number(a.start)||0,Number(b.start)||0);
+  const end=Math.min(Number(a.end)||0,Number(b.end)||0);
+  const inter=Math.max(0,end-start);
+  const da=Math.max(.001,(Number(a.end)||0)-(Number(a.start)||0));
+  const db=Math.max(.001,(Number(b.end)||0)-(Number(b.start)||0));
+  return inter/Math.min(da,db);
+}
+function entryIdentity(e){
+  return String(e?.base||e?.raw||'').toLowerCase();
+}
+function dedupeTemporalEntries(entries){
+  const sorted=[...(entries||[])].sort((a,b)=>(a.start||0)-(b.start||0)||(b.score||0)-(a.score||0));
+  const out=[];
+
+  for(const e of sorted){
+    const id=entryIdentity(e);
+    let dup=-1;
+    for(let i=Math.max(0,out.length-8);i<out.length;i++){
+      const old=out[i];
+      if(entryIdentity(old)!==id)continue;
+      const overlap=temporalOverlapRatio(old,e);
+      const nearlySame=Math.abs((old.start||0)-(e.start||0))<.14&&Math.abs((old.end||0)-(e.end||0))<.20;
+      if(overlap>=.48||nearlySame){dup=i;break}
+    }
+    if(dup>=0){
+      if((e.score||0)>(out[dup].score||0))out[dup]=e;
+    }else out.push(e);
+  }
+  return out.sort((a,b)=>(a.start||0)-(b.start||0));
+}
+function dedupeRawGroupMeta(meta){
+  const sorted=[...(meta||[])].sort((a,b)=>a.start-b.start);
+  const out=[];
+  for(const g of sorted){
+    let duplicate=false;
+    for(let i=Math.max(0,out.length-6);i<out.length;i++){
+      const old=out[i];
+      if(temporalOverlapRatio(old,g)>=.62){duplicate=true;break}
+    }
+    if(!duplicate)out.push(g);
+  }
+  return out;
+}
+function dedupeEntryLists(all,next){
+  all.push(...next);
+  const clean=dedupeTemporalEntries(all);
+  all.splice(0,all.length,...clean);
+  return all;
+}
+
+async function transcribeLiteralAudio(audio16k,kind='ob'){
+  const filtered=speechBandpass(audio16k,16000),audio=normalizeAudio(filtered,2.5);
+  const chunks=makeLiteralChunks(audio,16000,kind==='ob'?5.2:5.6,.14),entries=[],rawGroupMeta=[];
+  await getPhoneme();
+
+  for(let i=0;i<chunks.length;i++){
+    const c=chunks[i];
+    setProgress(18+76*((i+.25)/Math.max(1,chunks.length)));
+    const po=await phonemize(c.audio),tokens=phonemeTokens(po),groups=splitPhoneWordsSmart(tokens);
+    const local=[];
+
+    for(const g of groups){
+      if(!g.length)continue;
+      if(kind==='ob'&&isLowInformationObGroup(g))continue;
+
+      const phones=g.map(x=>normalizePhoneme(x.p)).filter(Boolean);
+      const localStart=Number(g[0]?.start)||0;
+      const localEnd=Number(g[g.length-1]?.end)||localStart+.08;
+      const groupStart=c.start+localStart;
+      const groupEnd=c.start+Math.max(localEnd,localStart+.05);
+      rawGroupMeta.push({phones,start:groupStart,end:groupEnd});
+
+      if(kind==='ob'){
+        const classified=classifyObGroupWithBoundaryRescue(g);
+        const count=Math.max(1,classified.length);
+        for(let ci=0;ci<classified.length;ci++){
+          const e=classified[ci];
+          if(!e.raw||e.raw.length>42||isBogusObFillerEntry(e))continue;
+          const span=Math.max(.05,groupEnd-groupStart);
+          const start=groupStart+span*(ci/count);
+          const end=groupStart+span*((ci+1)/count);
+          local.push({...e,start,end,phones:phones.join(' ')});
+        }
+      }else{
+        const e=literalizeCrackGroup(g);
+        if(e.raw&&e.raw.length<=42)local.push({...e,start:groupStart,end:groupEnd,phones:phones.join(' ')});
+      }
+    }
+
+    dedupeEntryLists(entries,local);
+    await new Promise(r=>setTimeout(r,0));
+  }
+
+  const cleanEntries=dedupeTemporalEntries(entries);
+  const cleanMeta=dedupeRawGroupMeta(rawGroupMeta);
+  return {
+    entries:cleanEntries,
+    rawGroups:cleanMeta.map(x=>x.phones),
+    rawGroupMeta:cleanMeta,
+    allText:normalizeSpaces(cleanEntries.map(x=>x.raw).join(' '))
+  };
+}
+
+function filterObEntries(entries){
+  const out=[];
+  let prev='';
+
+  for(const e of entries){
+    if(e.keep&&/ob/i.test(e.raw)){
+      out.push(e);
+      prev=e.base||prev;
+      continue;
+    }
+
+    const candidate=e.obCandidate||'';
+    if(candidate&&prev){
+      const bonus=learnedBigramBonus(prev,candidate);
+
+      // Context may rescue a near-miss, but it cannot manufacture a completely
+      // unrelated word. The acoustic hypothesis still needs a plausible score.
+      if(bonus>=3.0&&(e.contrast||0)>=-10&&(e.obScore||0)>=44){
+        out.push({
+          ...e,keep:true,base:candidate,
+          raw:encodeObWord(candidate).toLowerCase(),
+          source:'context-rerank'
+        });
+        prev=candidate;
+      }
+    }
+  }
+  return out;
+}
+
+
+function stabilizeObEntries(entries,totalGroups,durationSeconds){
+  if(!entries?.length)return [];
+
+  const counts=new Map();
+  for(const e of entries){
+    const w=e.base||'';
+    if(w)counts.set(w,(counts.get(w)||0)+1);
+  }
+
+  let dominantWord='',dominantCount=0;
+  for(const [w,c] of counts){
+    if(c>dominantCount){dominantWord=w;dominantCount=c}
+  }
+
+  // Only apply the collapse detector to a real multi-word/long recording.
+  if(durationSeconds<7 || entries.length<8)return entries;
+
+  const dominance=dominantCount/Math.max(1,entries.length);
+  if(dominance<.34 || dominantCount<6)return entries;
+
+  let keptDominant=0;
+  const out=[];
+
+  for(const e of entries){
+    if(e.base!==dominantWord){
+      out.push(e);
+      continue;
+    }
+
+    const explicit =
+      (e.evidence||0)>0 ||
+      String(e.source||'').includes('dictionary') ||
+      String(e.source||'').includes('ob-whole-word');
+
+    // Keep all independently-supported occurrences. For adaptive-only repeats,
+    // keep at most two so one taught word cannot flood a recording.
+    if(explicit || keptDominant<2){
+      out.push(e);
+      keptDominant++;
+    }
+  }
+
+  return out;
+}
+
+function candidateListForGroup(groupPhones){
+  const group=(groupPhones||[]).map((p,i)=>({p,start:i*.06,end:(i+1)*.06}));
+  if(!group.length)return [];
+
+  const list=[];
+  const direct=literalizeObGroup(group);
+
+  if(direct.obCandidate){
+    list.push({
+      word:direct.obCandidate,
+      score:(direct.obScore||direct.score||0),
+      source:direct.source
+    });
+  }
+
+  const learned=matchLearnedObWord(group);
+  if(learned.word){
+    const sameAsDirect=direct.obCandidate&&direct.obCandidate===learned.word;
+    const exactConfirmed=learned.confirmed&&learned.norm<=.12;
+    if(sameAsDirect||exactConfirmed){
+      list.push({
+        word:learned.word,
+        score:learned.score+(sameAsDirect?1:0),
+        source:exactConfirmed?'confirmed-exact':'adaptive-same-word'
+      });
+    }
+  }
+
+  const windows=scanObWordsInsideGroup(group);
+  for(const w of windows.slice(0,4)){
+    list.push({
+      word:w.word,
+      score:w.finalScore,
+      source:w.source
+    });
+  }
+
+  const bestByWord=new Map();
+  for(const c of list){
+    if(!c.word)continue;
+    const old=bestByWord.get(c.word);
+    if(!old||c.score>old.score)bestByWord.set(c.word,c);
+  }
+  return [...bestByWord.values()].sort((a,b)=>b.score-a.score).slice(0,5);
+}
+
+function beamDecodeObGroups(rawGroups,beamWidth=12){
+  let beam=[{words:[],score:0,used:0,counts:{}}];
+
+  for(const group of rawGroups||[]){
+    const candidates=candidateListForGroup(group);
+    const next=[];
+
+    for(const state of beam){
+      next.push({...state,score:state.score-7});
+
+      for(const c of candidates){
+        const prev=state.words[state.words.length-1]||'';
+        const context=learnedBigramBonus(prev,c.word);
+        const seen=state.counts[c.word]||0;
+
+        let repetitionPenalty=0;
+        if(prev===c.word)repetitionPenalty+=16;
+        if(seen>=2)repetitionPenalty+=(seen-1)*13;
+
+        let score=state.score+c.score+context-repetitionPenalty;
+        if(context>=4)score+=2;
+
+        next.push({
+          words:[...state.words,c.word],
+          score,
+          used:state.used+1,
+          counts:{...state.counts,[c.word]:seen+1}
+        });
+      }
+    }
+
+    next.sort((a,b)=>b.score-a.score);
+    beam=next.slice(0,beamWidth);
+  }
+
+  const best=beam
+    .filter(x=>x.used>0)
+    .sort((a,b)=>(b.score/(b.used+.7))-(a.score/(a.used+.7)) || b.used-a.used)[0];
+
+  if(!best)return {words:[],score:-999};
+
+  const avg=best.score/Math.max(1,best.used);
+  if(avg<42)return {words:[],score:avg};
+
+  return {words:best.words,score:avg};
+}
+function filterCorpusByRule(text,rule){
+  const words=String(text||'').match(/[a-z0-9']+/gi)||[];
+  const kept=words.filter(w=>wordMatchesRule(w,rule));
+  return normalizeSpaces(kept.join(' '));
+}
+
+function bestCrackFromSources(sources,previous=null){
+  const attempts=[];
+  for(const src0 of sources){
+    const src=normalizeSpaces(src0);if(!src)continue;
+    const initial=crackLanguage(src,previous);if(!initial)continue;
+    const filtered=filterCorpusByRule(src,initial.rule);
+    let refined=initial;
+    if(filtered&&filtered!==src){
+      const again=crackLanguage(filtered,initial);
+      if(again&&(again.confidence||0)>=(initial.confidence||0)-.05)refined=again;
+    }
+    const finalFiltered=filterCorpusByRule(src,refined.rule)||filtered||src;
+    const total=(src.match(/[a-z0-9']+/gi)||[]).length||1;
+    const kept=(finalFiltered.match(/[a-z0-9']+/gi)||[]).length;
+    const retention=kept/total;
+    // A real secret pattern should recur, but background words should be discarded.
+    const rank=(refined.confidence||0)+Math.min(.14,kept*.012)+(retention<.98?.04:0);
+    attempts.push({found:{...refined,samples:finalFiltered,rawSamples:src},filtered:finalFiltered,rank});
+  }
+  attempts.sort((a,b)=>b.rank-a.rank);
+  return attempts[0]||null;
+}
+
+function matchObWord(seq){
+  const obs=seq.map(x=>normalizePhoneme(x.p??x)).filter(p=>p&&p!=='|');
+  if(!obs.length)return {word:'',score:0,evidence:0};
+  const idx=buildPhoneIndex(),evidence=countObEvidence(seq),stripped=stripObPhonePairs(seq),strippedPhones=stripped.phones.map(x=>normalizePhoneme(x.p??x));
+
+  // Exact normal-pronunciation match after removing the inserted syllables is strongest.
+  const exact=idx.lex[strippedPhones.join(' ')];
+  if(exact)return {word:exact,score:108+(COMMON.has(exact)?5:0),evidence:Math.max(evidence,stripped.removed),exact:true};
+
+  const key=observedStartKey(seq),candidates=[];
+  for(let delta=-3;delta<=3;delta++){
+    const len=obs.length+delta;if(len<1)continue;
+    const bucket=idx.obByLenFirst.get(len+'|'+key)||[];
+    candidates.push(...bucket);
+  }
+  // If the first phone was damaged, widen only when the focused search did not find enough.
+  if(candidates.length<40){
+    for(let delta=-2;delta<=2;delta++){
+      const len=obs.length+delta;
+      for(const [bucketKey,bucket] of idx.obByLenFirst){
+        if(bucketKey.startsWith(len+'|'))candidates.push(...bucket.slice(0,350));
+      }
+    }
+  }
+
+  let best=null,second=null;
+  const seen=new Set();
+  for(const c of candidates){
+    const id=c.word+'|'+c.base.join(' ');if(seen.has(id))continue;seen.add(id);
+    const expected=encodedObPhones(c.base),dist=weightedPhoneDistance(obs,expected),norm=dist/Math.max(obs.length,expected.length,1);
+    let score=100-norm*112;
+    if(COMMON.has(c.word))score+=8;
+    if(c.word.length===1&&c.word!=='a'&&c.word!=='i')score-=12;
+    if(!best||score>best.score){second=best;best={word:c.word,score,dist,norm}}
+    else if(!second||score>second.score)second={word:c.word,score,dist,norm};
+  }
+
+  if(best){
+    const margin=second?best.score-second.score:10;
+    best.score+=Math.min(5,Math.max(0,margin*.55));
+    best.evidence=evidence;
+    best.margin=margin;
+    if(best.score>=54||(COMMON.has(best.word)&&best.score>=48))return best;
+  }
+
+  // Never turn weak phonemes into a made-up English word. Rough text is debug-only.
+  return {word:'',score:best?.score||0,evidence,rough:roughPhoneWord(strippedPhones)};
+}
+function decodeObFromPhonemes(tokens){
+  const words=splitPhoneWordsSmart(tokens),decoded=[],scores=[];let evidence=0,accepted=0;
+  const groups=words.length?words:[tokens.filter(t=>normalizePhoneme(t.p)!=='|')];
+  for(const group of groups){
+    if(!group.length)continue;
+    const hit=matchObWord(group);evidence+=hit.evidence||0;
+    if(hit.word){decoded.push(hit.word);scores.push(hit.score);accepted++}
+    else decoded.push('[unclear]');
+  }
+  const text=normalizeSpaces(decoded.join(' ')),coverage=groups.length?accepted/groups.length:0;
+  return {text,score:scores.length?scores.reduce((a,b)=>a+b,0)/scores.length:0,evidence,coverage,groups:groups.length};
+}
+function roughPhonemeTranscript(tokens){
+  const words=splitPhoneWordsSmart(tokens);
+  if(words.length)return words.map(w=>roughPhoneWord(w)).filter(Boolean).join(' ');
+  return roughPhoneWord(tokens.filter(t=>normalizePhoneme(t.p)!=='|'));
+}
+
+// ---------- recognition quality / hallucination guard ----------
+function cleanWhisperText(text){
+  return normalizeSpaces(String(text||'')
+    .replace(/\*[^*]{1,160}\*/g,' ')
+    .replace(/\[[^\]]{1,160}\]/g,' ')
+    .replace(/\([^\)]{1,160}\)/g,' ')
+    .replace(/♪+/g,' ')
+    .replace(/\s+/g,' ')
+    .toLowerCase());
+}
+function wordList(text){return cleanWhisperText(text).match(/[a-z']+/g)||[]}
+function ngramRepeatCount(ws,n){
+  if(ws.length<n*2)return 0;
+  const m=new Map();let repeats=0;
+  for(let i=0;i<=ws.length-n;i++){const g=ws.slice(i,i+n).join(' ');m.set(g,(m.get(g)||0)+1)}
+  for(const c of m.values())if(c>1)repeats+=c-1;
+  return repeats;
+}
+function collapseImmediateRepeats(text){
+  const ws=normalizeSpaces(text).split(' ').filter(Boolean),out=[];
+  for(const w of ws){if(out.length>=2&&out[out.length-1]===w&&out[out.length-2]===w)continue;out.push(w)}
+  return out.join(' ');
+}
+function englishQuality(text,duration=0){
+  const s=cleanWhisperText(text),ws=wordList(s);
+  if(!ws.length)return -250;
+  let score=25,known=0,singleBad=0;
+  for(const w of ws){
+    if(COMMON.has(w)){known++;score+=2.4}
+    if(w.length===1&&w!=='a'&&w!=='i'){singleBad++;score-=3.5}
+    if(!/[aeiouy]/.test(w)&&w.length>3)score-=2.2;
+  }
+  score+=(known/ws.length)*28;
+  const r3=ngramRepeatCount(ws,3),r4=ngramRepeatCount(ws,4);
+  score-=r3*20+r4*12;
+  for(const b of BAD_MARKERS)if(s.includes(b))score-=b==='sound of the sound'?220:85;
+  if(duration>0){
+    const rate=ws.length/duration,maxReasonable=Math.ceil(duration*3.8+4);
+    if(rate>4.4)score-=60+(rate-4.4)*22;
+    if(ws.length>maxReasonable*1.35)score-=90;
+    if(duration>2.2&&rate<.22)score-=22;
+  }
+  if(singleBad>Math.max(2,ws.length*.18))score-=35;
+  return score;
+}
+function sanitizeRecognition(text,duration=0){
+  let s=collapseImmediateRepeats(cleanWhisperText(text));
+  const ws=wordList(s);
+  if(!ws.length)return '';
+  if(ngramRepeatCount(ws,3)>=3||ngramRepeatCount(ws,4)>=2)return '';
+  if(duration>0){
+    const hardMax=Math.ceil(duration*4.2+6);
+    if(ws.length>hardMax)return '';
+  }
+  if(englishQuality(s,duration)<8)return '';
+  return s;
+}
+
+function commonWordCoverage(text){
+  const ws=wordList(text);
+  if(!ws.length)return 0;
+  let known=0;
+  for(const w of ws)if(COMMON.has(w)||w==='a'||w==='i')known++;
+  return known/ws.length;
+}
+
+function safeDirectEnglish(text,duration,shortClip=false){
+  const s=sanitizeRecognition(text,duration);
+  if(!s)return '';
+  const ws=wordList(s);
+  if(!ws.length)return '';
+
+  const coverage=commonWordCoverage(s);
+  const rate=ws.length/Math.max(.35,duration);
+
+  // A short Ob phrase is often normalized perfectly by Whisper even if the
+  // phoneme model misses the inserted syllable. This path is deliberately
+  // conservative: few words, mostly common English, normal speaking rate.
+  if(shortClip||duration<=4.0){
+    if(ws.length<=8&&coverage>=.62&&rate<=4.0&&englishQuality(s,duration)>=18)return s;
+    return '';
+  }
+
+  // For long/noisy clips require much stronger evidence so background speech
+  // cannot become a fake translation.
+  if(ws.length<=12&&coverage>=.78&&rate<=3.4&&englishQuality(s,duration)>=35)return s;
+  return '';
+}
+
+function guardFinalText(text,duration){
+  let s=normalizeSpaces(text).replace(/(?:\[unclear\]\s*){2,}/g,'[unclear] ');
+  const ws=s.split(' ').filter(Boolean),hardMax=Math.max(8,Math.ceil(duration*3.6+10));
+  if(ws.length>hardMax)s=ws.slice(0,hardMax).join(' ');
+  // Giant repetitive output is always a failure, never a high-confidence answer.
+  const clean=wordList(s);
+  if(ngramRepeatCount(clean,3)>=4||ngramRepeatCount(clean,4)>=3)return '[unclear]';
+  return normalizeSpaces(s)||'[unclear]';
+}
+
+// ---------- models ----------
+async function getHF(){
+  if(HF)return HF;
+  HF=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1/+esm');
+  if(HF.env){
+    HF.env.allowLocalModels=false;
+    HF.env.useBrowserCache=true;
+  }
+  return HF;
+}
+async function getPhoneme(){
+  if(phonemePipe)return phonemePipe;
+  if(phonemeLoading)return phonemeLoading;
+
+  phonemeLoading=(async()=>{
+    const M=await getHF();
+    const modelId='onnx-community/wav2vec2-ljspeech-gruut-ONNX';
+
+    const model=await M.AutoModelForCTC.from_pretrained(modelId,{
+      dtype:'q4',
+      progress_callback:p=>{
+        if(processing&&typeof p?.progress==='number')
+          setProgress(4+Math.min(99,p.progress)*.31);
+      }
+    });
+
+    // Embed the tiny vocabulary directly. No tokenizer.json or vocab fetch is needed.
+    const vocab={
+      "|":0,"aɪ":1,"aʊ":2,"b":3,"d":4,"d͡ʒ":5,"eɪ":6,"f":7,"h":8,"i":9,"j":10,
+      "k":11,"l":12,"m":13,"n":14,"oʊ":15,"p":16,"s":17,"t":18,"t͡ʃ":19,"u":20,"v":21,
+      "w":22,"z":23,"æ":24,"ð":25,"ŋ":26,"ɑ":27,"ɔ":28,"ɔɪ":29,"ə":30,"ɚ":31,"ɛ":32,
+      "ɡ":33,"ɪ":34,"ɹ":35,"ʃ":36,"ʊ":37,"ʌ":38,"ʒ":39,"θ":40,"[UNK]":41,"[PAD]":42
+    };
+    const idToToken=[];
+    for(const [token,id] of Object.entries(vocab))idToToken[Number(id)]=token;
+
+    const blankId=42,unknownId=41,delimiterId=0;
+
+    phonemePipe=async(audio)=>{
+      const samples=audio instanceof Float32Array?audio:new Float32Array(audio);
+
+      let mean=0;
+      for(let i=0;i<samples.length;i++)mean+=samples[i];
+      mean/=Math.max(1,samples.length);
+
+      let variance=0;
+      for(let i=0;i<samples.length;i++){
+        const d=samples[i]-mean;
+        variance+=d*d;
+      }
+      const std=Math.sqrt(variance/Math.max(1,samples.length))+1e-7;
+      const normalized=new Float32Array(samples.length);
+      for(let i=0;i<samples.length;i++)normalized[i]=(samples[i]-mean)/std;
+
+      const inputValues=new M.Tensor('float32',normalized,[1,normalized.length]);
+      const outputs=await model({input_values:inputValues});
+      const logits=outputs.logits,dims=logits.dims,data=logits.data;
+      if(!dims||dims.length!==3)throw new Error('Unexpected phoneme model output shape.');
+
+      const frames=dims[1],classes=dims[2],duration=samples.length/16000;
+      const ids=new Int32Array(frames);
+
+      for(let t=0;t<frames;t++){
+        const base=t*classes;
+        let bestId=0,best=-Infinity;
+        for(let c=0;c<classes;c++){
+          const v=data[base+c];
+          if(v>best){best=v;bestId=c}
+        }
+        ids[t]=bestId;
+      }
+
+      const chunks=[];
+      let runId=ids.length?ids[0]:-1,runStart=0;
+
+      const flush=(endFrame)=>{
+        if(runId<0||runId===blankId||runId===unknownId)return;
+        const token=idToToken[runId];
+        if(!token)return;
+        chunks.push({
+          text:token,
+          timestamp:[(runStart/frames)*duration,(endFrame/frames)*duration]
+        });
+      };
+
+      for(let t=1;t<frames;t++){
+        if(ids[t]!==runId){
+          flush(t);
+          runId=ids[t];
+          runStart=t;
+        }
+      }
+      flush(frames);
+
+      return {text:chunks.map(x=>x.text).join(' '),chunks,delimiterId};
+    };
+
+    phonemePipe.__model=model;
+    return phonemePipe;
+  })();
+
+  try{return await phonemeLoading}
+  catch(err){phonemePipe=null;throw err}
+  finally{phonemeLoading=null}
+}
+
+async function getWhisper(){
+  if(whisperPipe)return whisperPipe;
+  if(whisperLoading)return whisperLoading;
+
+  whisperLoading=(async()=>{
+    const M=await getHF();
+    whisperPipe=await M.pipeline(
+      'automatic-speech-recognition',
+      'onnx-community/whisper-tiny.en', // English-only Whisper model
+      {
+        dtype:'q4',
+        progress_callback:p=>{
+          if(processing&&typeof p?.progress==='number')
+            setProgress(56+Math.min(99,p.progress)*.18);
+        }
+      }
+    );
+    return whisperPipe;
+  })();
+
+  try{return await whisperLoading}
+  finally{whisperLoading=null}
+}
+function timeoutPromise(p,ms,message){
+  return Promise.race([
+    p,
+    new Promise((_,reject)=>setTimeout(()=>reject(new Error(message)),ms))
+  ]);
+}
+async function phonemize(audio){
+  const pipe=await timeoutPromise(getPhoneme(),240000,'The phoneme model took too long to load.');
+  const out=await timeoutPromise(
+    pipe(audio,{return_timestamps:'char'}),
+    90000,
+    'Phoneme recognition took too long.'
+  );
+  return out;
+}
+async function whisper(audio,duration){
+  const pipe=await timeoutPromise(getWhisper(),240000,'The English model took too long to load.');
+  const maxTokens=Math.max(12,Math.min(72,Math.ceil(duration*8)+8));
+  const out=await timeoutPromise(
+    pipe(audio,{
+      return_timestamps:false,
+      max_new_tokens:maxTokens
+    }),
+    90000,
+    'English recognition took too long.'
+  );
+  return cleanWhisperText(out?.text||'');
+}
+
+// ---------- Ob microphone algorithm ----------
+async function translateObClip(clipObj,clipIndex,totalClips){
+  const clip=clipObj.audio,duration=clipObj.duration||clip.length/16000;
+  const shortClip=!!clipObj.short||duration<=4.0;
+
+  setProgress(30+22*((clipIndex+.2)/Math.max(1,totalClips)));
+
+  // First listen only for phones. This is fast compared with Whisper and gives
+  // us a language-independent test for whether this chunk actually resembles Ob.
+  const po=await phonemize(clip);
+  const phones=phonemeTokens(po);
+  const signal=obSignalStats(phones);
+  const phoneResult=decodeObFromPhonemes(phones);
+  const intervals=detectObIntervals(phones);
+
+  const exactEvidence=Math.max(phoneResult.evidence||0,intervals.filter(x=>!x.relaxed).length);
+  const evidence=Math.max(exactEvidence, signal.likely ? Math.max(1,signal.near) : 0);
+
+  // IMPORTANT:
+  // In a long/noisy test, background English is rejected HERE, before Whisper
+  // ever gets a chance to turn it into a convincing but false translation.
+  // A one-word/short personal recording still gets a conservative direct fallback.
+  if(!shortClip && !signal.likely && exactEvidence===0){
+    return {
+      text:'[skip]',score:-80,removed:0,evidence:0,
+      obSignal:signal,
+      phonemes:phones.map(x=>x.p).join(' '),
+      source:'background-rejected'
+    };
+  }
+
+  // Ob-aware phoneme reconstruction is the strongest independent evidence.
+  const ptext=phoneResult.coverage>=.44&&phoneResult.score>=50
+    ?phoneResult.text
+    :'';
+  const pscore=ptext?phoneResult.score:-250;
+
+  // If the phoneme result is already strong, avoid a second ML pass.
+  if(ptext && (signal.likely||exactEvidence>0) && pscore>=68){
+    return {
+      text:ptext,score:pscore,removed:intervals.length,evidence,
+      obSignal:signal,
+      phonemes:phones.map(x=>x.p).join(' '),
+      source:'ob-phoneme-fast'
+    };
+  }
+
+  // When Ob is detected, physically remove the inserted acoustic pieces before
+  // asking the English recognizer to listen.
+  let cleanedText='',cleanedScore=-250;
+  if(intervals.length){
+    const cleaned=removeTimedIntervals(clip,intervals,16000);
+    const cleanedDuration=cleaned.length/16000;
+
+    if(cleaned.length>=16000*.16){
+      setProgress(56+12*((clipIndex+.55)/Math.max(1,totalClips)));
+      const raw=await whisper(cleaned,cleanedDuration);
+      cleanedText=safeDirectEnglish(raw,cleanedDuration,shortClip);
+      cleanedScore=cleanedText?englishQuality(cleanedText,cleanedDuration):-250;
+    }
+  }
+
+  if(cleanedText && cleanedScore>=18 && (cleanedScore>=pscore-8||!ptext)){
+    return {
+      text:cleanedText,score:cleanedScore,removed:intervals.length,evidence,
+      obSignal:signal,
+      phonemes:phones.map(x=>x.p).join(' '),
+      source:'cleaned-ob-audio'
+    };
+  }
+
+  if(ptext){
+    return {
+      text:ptext,score:pscore,removed:intervals.length,evidence,
+      obSignal:signal,
+      phonemes:phones.map(x=>x.p).join(' '),
+      source:'ob-phoneme'
+    };
+  }
+
+  // Direct Whisper is a rescue path, not the main algorithm.
+  // - short recording: allowed under the existing strict English sanity test.
+  // - long recording: allowed ONLY after independent Ob classification.
+  setProgress(68+8*((clipIndex+.8)/Math.max(1,totalClips)));
+  const directRaw=await whisper(clip,duration);
+  const direct=safeDirectEnglish(directRaw,duration,shortClip);
+  const directScore=direct?englishQuality(direct,duration):-250;
+
+  if(direct && (shortClip || signal.likely || exactEvidence>0)){
+    return {
+      text:direct,score:directScore,removed:intervals.length,evidence,
+      obSignal:signal,
+      phonemes:phones.map(x=>x.p).join(' '),
+      source:shortClip?'short-safe-direct':'ob-confirmed-direct'
+    };
+  }
+
+  return {
+    text:'[unclear]',score:Math.max(pscore,cleanedScore,directScore),
+    removed:intervals.length,evidence,
+    obSignal:signal,
+    phonemes:phones.map(x=>x.p).join(' '),
+    source:'unclear'
+  };
+}
+async function translateObAudio(audio16k){
+  const prep=prepareForeground(audio16k,16000,'ob'),clips=prep.clips,parts=[],debugRows=[];
+  let removedTotal=0,qualitySum=0,qualityN=0,evidenceTotal=0,obAccepted=0,accepted=0;
+
+  if(!clips.length)return {text:'[unclear]',removed:0,debug:[],quality:-100,prep};
+
+  await getPhoneme();
+  setProgress(32);
+
+  for(let i=0;i<clips.length;i++){
+    const r=await translateObClip(clips[i],i,clips.length);
+    const usable=r.text!=='[skip]'&&r.text!=='[unclear]';
+
+    if(r.text!=='[skip]')parts.push(r.text);
+    removedTotal+=r.removed||0;
+    evidenceTotal+=r.evidence||0;
+
+    if(usable){
+      accepted++;
+      if(r.obSignal?.likely||(r.evidence||0)>0)obAccepted++;
+      qualitySum+=r.score;
+      qualityN++;
+    }
+
+    debugRows.push({...r,start:clips[i].start,end:clips[i].end});
+    setProgress(80+17*((i+1)/clips.length));
+    await new Promise(resolve=>setTimeout(resolve,0));
+  }
+
+  let final=guardFinalText(dedupeJoin(parts),Math.max(1,prep.selectedDuration));
+
+  // On long recordings, a translation needs independent Ob evidence in the
+  // majority of accepted chunks. This blocks background-conversation paragraphs.
+  if(prep.totalDuration>8 && accepted>0){
+    const obFraction=obAccepted/accepted;
+    if(obFraction<.60)final='[unclear]';
+  }
+
+  return {
+    text:final,
+    removed:removedTotal,
+    evidence:evidenceTotal,
+    debug:debugRows,
+    quality:qualityN?qualitySum/qualityN:-100,
+    prep,
+    accepted,
+    obAccepted
+  };
+}
+
+// ---------- microphone ----------
+async function startRecording(){
+  if(listening||processing)return;
+  if(!navigator.mediaDevices?.getUserMedia)throw new Error('Microphone capture is unavailable.');
+  resetProgress();statusEl.textContent='';
+
+  const supported=navigator.mediaDevices.getSupportedConstraints?.()||{};
+  const rawAudio={channelCount:1};
+
+  // These browser features are useful for normal calls, but harmful here:
+  // echoCancellation can literally remove the Ob test when it is played
+  // through the same computer's speakers, while noise suppression can erase
+  // the repeated invented "ob" syllables.
+  if(supported.echoCancellation)rawAudio.echoCancellation=false;
+  if(supported.noiseSuppression)rawAudio.noiseSuppression=false;
+  if(supported.autoGainControl)rawAudio.autoGainControl=false;
+  if(supported.sampleRate)rawAudio.sampleRate=48000;
+
+  try{
+    micStream=await navigator.mediaDevices.getUserMedia({audio:rawAudio,video:false});
+  }catch(firstError){
+    // Some older mobile browsers reject optional constraints. Fall back to a
+    // plain microphone request instead of failing.
+    micStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
+  }
+
+  const track=micStream.getAudioTracks?.()[0];
+  if(track){
+    // A second best-effort pass helps Chromium/iPad browsers that initially
+    // accept a constraint object but do not immediately apply every setting.
+    const exact={};
+    if(supported.echoCancellation)exact.echoCancellation=false;
+    if(supported.noiseSuppression)exact.noiseSuppression=false;
+    if(supported.autoGainControl)exact.autoGainControl=false;
+    try{await track.applyConstraints(exact)}catch{}
+
+    try{
+      const s=track.getSettings?.()||{};
+      lastMicSettings={
+        echoCancellation:s.echoCancellation,
+        noiseSuppression:s.noiseSuppression,
+        autoGainControl:s.autoGainControl,
+        sampleRate:s.sampleRate,
+        channelCount:s.channelCount
+      };
+    }catch{}
+  }
+
+  const AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC)throw new Error('Web Audio is unavailable.');
+
+  audioContext=new AC();
+  if(audioContext.state==='suspended')await audioContext.resume();
+
+  recordingSampleRate=audioContext.sampleRate;
+  pcmChunks=[];
+  micSource=audioContext.createMediaStreamSource(micStream);
+  processor=audioContext.createScriptProcessor(2048,1,1);
+  silenceGain=audioContext.createGain();
+  silenceGain.gain.value=0;
+
+  processor.onaudioprocess=e=>{
+    if(listening)pcmChunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+  };
+
+  micSource.connect(processor);
+  processor.connect(silenceGain);
+  silenceGain.connect(audioContext.destination);
+
+  listening=true;
+  micarea.classList.add('listening');
+  mic.textContent='■';
+  statusEl.textContent='Recording…';
+}
+function stopCaptureNow(){
+  if(!listening)return null;
+
+  // No await here: the stop button changes immediately, before any model work.
+  listening=false;
+  micarea.classList.remove('listening');
+  mic.textContent='🎤';
+  statusEl.textContent='';
+
+  try{if(processor)processor.onaudioprocess=null}catch{}
+  try{processor?.disconnect()}catch{}
+  try{micSource?.disconnect()}catch{}
+  try{silenceGain?.disconnect()}catch{}
+  try{micStream?.getTracks().forEach(t=>t.stop())}catch{}
+
+  const captured={chunks:pcmChunks,sampleRate:recordingSampleRate};
+  pcmChunks=[];
+
+  const ctx=audioContext;
+  audioContext=micStream=micSource=processor=silenceGain=null;
+  try{ctx?.close()}catch{}
+
+  return captured;
+}
+async function processCapture(captured){
+  if(!captured||processing)return;
+  processing=true;setProgress(2);
+  try{
+    const merged=mergeFloat32(captured.chunks);
+    if(!merged.length)throw new Error('No audio was recorded.');
+    let audio=resampleLinear(merged,captured.sampleRate,16000);
+    audio=normalizeAudio(audio,2.2);
+    if(rms(audio)<.00055)throw new Error('The recording was nearly silent.');
+
+    if(selectedMode==='ob'){
+      lastObAudioDuration=audio.length/16000;
+      lastObAudioFingerprint=acousticFingerprint(audio,16000);
+
+      // Fast path: a SHORT utterance that is an extremely close match to a
+      // raw-audio example can be recognized without waiting for the phoneme
+      // model at all.
+      if(lastObAudioFingerprint&&lastObAudioDuration<=4.8){
+        const acoustic=matchAcousticFingerprint(lastObAudioFingerprint);
+        if(acoustic.matched&&acoustic.distance<=.82){
+          const word=acoustic.word;
+          const canonical=encodeObWord(word);
+          lastObGroups=[];
+          lastObMicEntries=[];
+          lastObMicTranslation=word;
+          lastMicRaw=canonical;
+          lastMicKept=canonical;
+          input.value=canonical;
+          result.textContent=word;
+          pill.textContent='Ob → ENGLISH';
+          statusEl.textContent='Done.';
+          showLearningUI(true);
+          debug.classList.remove('hidden');
+          debugText.textContent=`Raw-audio match: ${word}\nDistance: ${acoustic.distance.toFixed(3)}\nSource: ${acoustic.ex?.source||'learned audio'}`;
+          finishProgress();
+          return;
+        }
+      }
+
+      // EXACT PIPELINE:
+      // 1. phoneme recognizer prints every word-like sound
+      // 2. keep only words that contain a detected Ob insertion
+      // 3. send ONLY those kept Ob words through the existing text decoder
+      const rec=await transcribeLiteralAudio(audio,'ob');
+
+      // Pass 1: normal word-by-word classifier.
+      let keptEntries=filterObEntries(rec.entries);
+
+      // Pass 2: if word boundaries were wrong, scan the raw phone groups for
+      // Ob words and confirmed speaker-specific examples.
+      if(!keptEntries.length){
+        keptEntries=rescueObEntriesFromRawGroups(rec.rawGroups||[]);
+      }
+
+      // Pass 3: beam/context decoder across the complete sequence.
+      if(!keptEntries.length){
+        const beam=beamDecodeObGroups(rec.rawGroups||[]);
+        if(beam.words.length){
+          keptEntries=beam.words.map(word=>({
+            raw:encodeObWord(word).toLowerCase(),
+            keep:true,base:word,source:'beam-context',
+            score:beam.score,obScore:beam.score,contrast:0
+          }));
+        }
+      }
+
+      // Final safety pass: prevent one learned word from taking over a long clip.
+      keptEntries=stabilizeObEntries(
+        keptEntries,
+        (rec.rawGroups||[]).length,
+        audio.length/16000
+      );
+
+      let kept=normalizeSpaces(keptEntries.map(x=>x.raw).join(' '));
+      let english=kept?decodeOb(kept):'[unclear]';
+
+      // Raw-audio rescue. This is especially important after Fix & Teach:
+      // phoneme recognition may still fail, but the actual acoustic pattern
+      // can match the saved recording directly.
+      if(!kept&&lastObAudioFingerprint&&lastObAudioDuration<=4.8){
+        const acoustic=matchAcousticFingerprint(lastObAudioFingerprint);
+        if(acoustic.matched){
+          const word=acoustic.word;
+          kept=encodeObWord(word);
+          english=word;
+          keptEntries=[{
+            raw:kept,keep:true,base:word,
+            source:'raw-audio-dtw',
+            score:Math.max(0,100-acoustic.distance*60),
+            obScore:Math.max(0,100-acoustic.distance*60),
+            contrast:0
+          }];
+        }
+      }
+
+      // Final rescue for a SHORT recording only. Some English recognizers
+      // normalize "hobellobo" directly to "hello". Never use this on the long
+      // noisy test, where it previously created fake background paragraphs.
+      if(!kept&&audio.length/16000<=4.5){
+        try{
+          const direct=sanitizeRecognition(await whisper(audio,audio.length/16000),audio.length/16000);
+          if(direct&&wordList(direct).length<=8&&commonWordCoverage(direct)>=.55){
+            const words=wordList(direct);
+            kept=words.map(encodeObWord).join(' ');
+            english=decodeOb(kept);
+            keptEntries=words.map(word=>({
+              raw:encodeObWord(word),keep:true,base:word,
+              source:'short-direct-rescue',score:50,obScore:50,contrast:0
+            }));
+          }
+        }catch(err){console.warn('Short Ob rescue unavailable',err)}
+      }
+
+      lastObGroups=rec.rawGroups||[];
+      lastObMicEntries=rec.entries||[];
+      lastObMicTranslation=english||'';
+      lastMicRaw=rec.allText;lastMicKept=kept;
+
+      autoLearnHighConfidence(keptEntries);
+
+      input.value=rec.allText;
+      result.textContent=english||'—';
+      pill.textContent='Ob → ENGLISH';
+      statusEl.textContent=kept?'Done.':'I saved the raw sound from this recording. Use Fix & teach and type the word; phoneme recognition is no longer required for teaching.';
+      showLearningUI(true);
+
+      debug.classList.remove('hidden');
+      debugText.textContent=[
+        `Words heard: ${rec.entries.length}`,
+        `Raw phone groups: ${(rec.rawGroups||[]).length}`,
+        ...rec.entries.slice(0,50).map((e,i)=>`${i+1}. ${e.raw} | ${e.keep?'KEEP':'drop'} | ${e.source} | ob ${Math.round(e.obScore??e.score??0)} vs normal ${Math.round(e.normalScore??0)} | Δ ${Math.round(e.contrast??0)} | ${String(e.phones||'').slice(0,110)}`),
+        ...(rec.entries.length?[]:(rec.rawGroups||[]).slice(0,20).map((g,i)=>`raw ${i+1}. ${g.join(' ')}`))
+      ].join('\n');
+
+    }else if(selectedMode==='crack'){
+      const rec=await transcribeLiteralAudio(audio,'crack');
+      lastCrackPhonetic=rec.allText;
+      lastCrackStandard='';
+      try{
+        const dur=audio.length/16000;
+        if(dur<=18){
+          const standard=sanitizeRecognition(await whisper(audio,dur),dur);
+          if(standard)lastCrackStandard=standard;
+        }
+      }catch(err){console.warn('Crack standard comparator unavailable',err)}
+      crackInput.value=rec.allText||lastCrackStandard;
+      statusEl.textContent=crackInput.value?'Ready to analyze.':'I could not turn those sounds into word-sized text.';
+      debug.classList.remove('hidden');
+      debugText.textContent=[
+        `Literal words heard: ${rec.entries.length}`,
+        lastCrackStandard?`Standard comparator: ${lastCrackStandard}`:'',
+        ...rec.entries.slice(0,55).map((e,i)=>`${i+1}. ${e.raw} | ${e.source} | ${String(e.phones||'').slice(0,120)}`)
+      ].filter(Boolean).join('\n');
+
+    }else if(selectedMode.startsWith('custom:')){
+      const lang=crackedLanguages.find(x=>x.id===selectedMode.split(':')[1]);
+      const rec=await transcribeLiteralAudio(audio,'crack');
+      const kept=filterCorpusByRule(rec.allText,lang?.rule);
+      const english=kept?decodeCustomForward(kept,lang):'[unclear]';
+
+      lastMicRaw=rec.allText;lastMicKept=kept;
+      input.value=rec.allText;
+      result.textContent=english||'—';
+      pill.textContent=(lang?.name||'Cracked')+' → ENGLISH';
+      statusEl.textContent=kept?'Done.':'I heard words, but none matched this cracked pattern.';
+    }
+    finishProgress();
+  }catch(err){
+    console.error(err);resetProgress();statusEl.textContent='Could not transcribe: '+String(err?.message||err);
+  }finally{processing=false}
+}
+
+// ---------- code cracker ----------
+const NUMBER_WORDS={
+  zero:'0',one:'1',two:'2',three:'3',four:'4',five:'5',six:'6',seven:'7',eight:'8',nine:'9',
+  ten:'10',eleven:'11',twelve:'12',thirteen:'13',fourteen:'14',fifteen:'15',sixteen:'16',
+  seventeen:'17',eighteen:'18',nineteen:'19',twenty:'20',twentyone:'21',twentytwo:'22',
+  twentythree:'23',twentyfour:'24',twentyfive:'25',twentysix:'26'
+};
+function numberWordsToDigits(text){
+  return String(text||'').toLowerCase().replace(
+    /\b(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|twentyone|twentytwo|twentythree|twentyfour|twentyfive|twentysix)\b/g,
+    m=>NUMBER_WORDS[m]??m
+  );
+}
+function numericTokens(text){return String(text||'').match(/\d{1,3}/g)||[]}
+function wordBreakEnglish(letters){
+  const s=String(letters||'').toLowerCase().replace(/[^a-z]/g,'');
+  if(!s)return'';
+  const n=s.length,dp=Array(n+1).fill(null);
+  dp[0]={score:0,words:[]};
+  for(let i=0;i<n;i++){
+    if(!dp[i])continue;
+    for(let j=i+1;j<=Math.min(n,i+18);j++){
+      const w=s.slice(i,j);
+      const add=COMMON.has(w)?22+w.length:(w==='a'||w==='i'?10:-2.2*w.length);
+      const c={score:dp[i].score+add,words:[...dp[i].words,w]};
+      if(!dp[j]||c.score>dp[j].score)dp[j]=c;
+    }
+  }
+  const best=dp[n];
+  if(!best)return s;
+  const known=best.words.filter(w=>COMMON.has(w)||w==='a'||w==='i').length;
+  return known>=Math.max(1,Math.floor(best.words.length*.42))?best.words.join(' '):s;
+}
+function decodeA1Z26(text){
+  const nums=numericTokens(text).map(Number);
+  if(nums.length<2||nums.some(n=>n<1||n>26))return String(text||'');
+  return wordBreakEnglish(nums.map(n=>String.fromCharCode(96+n)).join(''));
+}
+function decodeASCII(text){
+  const nums=numericTokens(text).map(Number);
+  if(nums.length<2||nums.some(n=>n<32||n>126))return String(text||'');
+  return normalizeSpaces(nums.map(n=>String.fromCharCode(n)).join(''));
+}
+const T9MAP={a:'2',b:'2',c:'2',d:'3',e:'3',f:'3',g:'4',h:'4',i:'4',j:'5',k:'5',l:'5',m:'6',n:'6',o:'6',p:'7',q:'7',r:'7',s:'7',t:'8',u:'8',v:'8',w:'9',x:'9',y:'9',z:'9'};
+function t9Sig(w){return[...w].map(c=>T9MAP[c]||'').join('')}
+const T9DICT=(()=>{
+  const m=new Map();
+  for(const w of COMMON){
+    if(w.length<2)continue;
+    const s=t9Sig(w);
+    if(!m.has(s))m.set(s,[]);
+    m.get(s).push(w);
+  }
+  return m;
+})();
+function decodeT9(text){
+  const groups=String(text||'').trim().split(/[\s,;/|]+/).filter(Boolean);
+  if(!groups.length||groups.some(g=>!/^[2-9]+$/.test(g)))return String(text||'');
+  const out=[];
+  for(const g of groups){
+    const c=T9DICT.get(g);
+    if(!c?.length)return String(text||'');
+    out.push(c[0]);
+  }
+  return out.join(' ');
+}
+const LEET=[
+  {'0':'o','1':'i','2':'z','3':'e','4':'a','5':'s','6':'g','7':'t','8':'b','9':'g'},
+  {'0':'o','1':'l','2':'s','3':'e','4':'a','5':'s','6':'g','7':'t','8':'b','9':'p'}
+];
+function applyDigitMap(text,map){return String(text||'').replace(/\d/g,d=>map[d]??d)}
+function englishTextScore(text){
+  const ws=String(text||'').toLowerCase().match(/[a-z']+/g)||[];
+  if(!ws.length)return -30;
+  let s=0,known=0;
+  for(const w of ws){if(COMMON.has(w)){s+=10;known++}else s-=.6}
+  return s+(known/ws.length)*15-(String(text).match(/\d/g)||[]).length*.5;
+}
+function crackLanguage(corpus,previous=null){
+  const original=String(corpus||'').trim();
+  if(!original)return null;
+  const normalized=numberWordsToDigits(original).toLowerCase().replace(/[^a-z0-9\s'\/|,;:\-]/g,' ');
+  const ws=normalized.match(/[a-z0-9']+/g)||[];
+  if(!ws.length)return null;
+  const candidates=[];
+
+  function add(rule,decoded,bonus=0,count=1){
+    decoded=normalizeSpaces(decoded);
+    if(!decoded)return;
+    let score=englishTextScore(decoded)+bonus;
+    if(previous?.rule?.type===rule.type)score+=4;
+    if(previous?.rule?.token&&previous.rule.token===rule.token)score+=3;
+    candidates.push({rule,decoded,score,count});
+  }
+
+  const nums=numericTokens(normalized);
+  if(nums.length>=2){
+    const a1=decodeA1Z26(normalized);if(a1!==normalized)add({type:'a1z26'},a1,22,nums.length);
+    const ascii=decodeASCII(normalized);if(ascii!==normalized)add({type:'ascii'},ascii,24,nums.length);
+    const t9=decodeT9(normalized);if(t9!==normalized)add({type:'t9'},t9,20,nums.length);
+  }
+  if(/\d/.test(normalized)&&/[a-z]/.test(normalized)){
+    LEET.forEach((m,i)=>add({type:'leet',mapIndex:i},applyDigitMap(normalized,m),8));
+  }
+
+  const numberCounts=new Map();
+  nums.forEach(n=>numberCounts.set(n,(numberCounts.get(n)||0)+1));
+  for(const[token,count]of numberCounts)if(count>=2)
+    add({type:'removeToken',token},normalizeSpaces(normalized.replace(new RegExp(escapeRegExp(token),'g'),' ')),count*2,count);
+
+  // Repeated alphanumeric inserts before/after vowels.
+  const before=new Map(),after=new Map();
+  for(const w of ws){
+    for(let i=1;i<w.length;i++)if('aeiouy'.includes(w[i]))
+      for(let len=1;len<=3;len++)if(i-len>=0){
+        const t=w.slice(i-len,i);before.set(t,(before.get(t)||0)+1);
+      }
+    for(let i=0;i<w.length-1;i++)if('aeiouy'.includes(w[i]))
+      for(let len=1;len<=3;len++)if(i+1+len<=w.length){
+        const t=w.slice(i+1,i+1+len);after.set(t,(after.get(t)||0)+1);
+      }
+  }
+  for(const[t,c]of before)if(c>=2)
+    add({type:'beforeVowel',token:t},ws.map(w=>w.replace(new RegExp(escapeRegExp(t)+'(?=[aeiouy])','g'),'')).join(' '),c*2,c);
+  for(const[t,c]of after)if(c>=2)
+    add({type:'afterVowel',token:t},ws.map(w=>w.replace(new RegExp('([aeiouy])'+escapeRegExp(t),'g'),'$1')).join(' '),c*2,c);
+
+  if(!candidates.length)return{rule:{type:'unknown'},confidence:.12,preview:original,samples:original,explanation:'No strong rule found yet. Add more examples.'};
+
+  candidates.sort((a,b)=>b.score-a.score);
+  const best=candidates[0],gap=candidates.length>1?best.score-candidates[1].score:10;
+  const confidence=Math.max(.2,Math.min(.98,.48+Math.min(.30,gap/30)+Math.min(.18,best.count/15)));
+  return{rule:best.rule,confidence,preview:best.decoded,samples:original,explanation:ruleLabel(best.rule)};
+}
+function decodeCustomForward(text,lang){
+  if(!lang?.rule)return text;
+  const r=lang.rule,t=escapeRegExp(r.token||'');
+  if(r.type==='a1z26')return decodeA1Z26(numberWordsToDigits(text));
+  if(r.type==='ascii')return decodeASCII(numberWordsToDigits(text));
+  if(r.type==='t9')return decodeT9(numberWordsToDigits(text));
+  if(r.type==='leet')return applyDigitMap(text,LEET[r.mapIndex||0]);
+  if(r.type==='removeToken')return normalizeSpaces(String(text).replace(new RegExp(t,'g'),' '));
+  if(r.type==='beforeVowel')return String(text).replace(new RegExp(t+'(?=[aeiouy])','gi'),'');
+  if(r.type==='afterVowel')return String(text).replace(new RegExp('([aeiouy])'+t,'gi'),'$1');
+  return text;
+}
+function ruleLabel(r){
+  if(!r)return'Unknown';
+  if(r.type==='a1z26')return'Numbers 1–26 represent A–Z';
+  if(r.type==='ascii')return'Numbers are ASCII character codes';
+  if(r.type==='t9')return'Numbers use phone keypad groups';
+  if(r.type==='leet')return'Digits replace letters';
+  if(r.type==='removeToken')return`Remove repeated token “${r.token}”`;
+  if(r.type==='beforeVowel')return`Remove “${r.token}” before vowels`;
+  if(r.type==='afterVowel')return`Remove “${r.token}” after vowels`;
+  return'Still learning the rule';
+}
+
+// ---------- saved cracked languages ----------
+function loadLanguages(){try{return JSON.parse(localStorage.getItem('crackedLanguagesV5')||'[]')}catch{return[]}}
+function saveLanguages(v){localStorage.setItem('crackedLanguagesV5',JSON.stringify(v))}
+let crackedLanguages=loadLanguages();
+function nextLanguageName(){let n=1;while(crackedLanguages.some(x=>x.name===`Cracked ${n}`))n++;return`Cracked ${n}`}
+function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function renderCustomModes(){
+  document.querySelectorAll('.custom-wrap').forEach(x=>x.remove());
+  for(const lang of crackedLanguages){
+    const wrap=document.createElement('div');wrap.className='custom-wrap';
+    wrap.innerHTML=`<button class="mode" data-mode="custom:${lang.id}"><b>🔓</b>${escapeHtml(lang.name)}</button><button class="delete-mini" data-delete="${lang.id}" title="Delete">×</button>`;
+    modesEl.appendChild(wrap);
+  }
+}
+function showCustomInfo(id){
+  const lang=crackedLanguages.find(x=>x.id===id);if(!lang)return;
+  customInfoCard.classList.remove('hidden');
+  customRuleTitle.textContent=ruleLabel(lang.rule);
+  customConfidence.textContent='Confidence: '+Math.round(lang.confidence*100)+'%';
+  customDetails.textContent=lang.explanation||'';
+}
+function selectMode(mode){
+  if(processing||listening)return;
+  selectedMode=mode;
+  if(mode!=='ob')showLearningUI(false);
+  document.querySelectorAll('.mode[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
+  crackPanel.classList.toggle('hidden',mode!=='crack');
+  customInfoCard.classList.add('hidden');
+  addInfoPanel.classList.add('hidden');
+  recognitionTarget=mode==='crack'?crackInput:input;
+
+  if(mode.startsWith('custom:'))showCustomInfo(mode.split(':')[1]);
+
+  // Reverse applies to Ob and saved cracked languages, not the Crack New tool.
+  if(mode==='crack'&&direction==='encode'){
+    direction='decode';
+  }
+
+  debug.classList.add('hidden');
+  
+  updateDirectionUI();
+
+  if(input.value.trim()&&mode!=='crack')renderTypedTranslation();
+}
+function renderTypedTranslation(){
+  const t=input.value.trim();
+  if(!t){
+    result.textContent='—';
+    pill.textContent='WAITING';
+    return;
+  }
+
+  const label=currentLanguageName();
+
+  if(direction==='encode'){
+    const encoded=reverseOutputFor(t);
+    result.textContent=encoded.text||'—';
+    pill.textContent='ENGLISH → '+label.toUpperCase();
+    resultLabel.textContent=label;
+    if(encoded.note)statusEl.textContent=encoded.note;
+    else if(!processing)statusEl.textContent='';
+    return;
+  }
+
+  let translated=t;
+  if(selectedMode==='ob')translated=decodeOb(t);
+  else if(selectedMode.startsWith('custom:')){
+    const lang=crackedLanguages.find(x=>x.id===selectedMode.split(':')[1]);
+    translated=decodeCustomForward(t,lang);
+  }
+  result.textContent=translated||'—';
+  pill.textContent=label+' → ENGLISH';
+  resultLabel.textContent='English translation';
+}
+
+// ---------- events ----------
+modesEl.addEventListener('click',e=>{
+  const del=e.target.closest('[data-delete]');
+  if(del){
+    const id=del.dataset.delete;
+    crackedLanguages=crackedLanguages.filter(x=>x.id!==id);
+    saveLanguages(crackedLanguages);
+    
+window.addEventListener('focus',()=>{
+  if(sharedSyncStatus!=='connecting')pullSharedLearning();
+});
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden'&&sharedSyncDirty){
+    pushSharedLearning();
+  }else if(document.visibilityState==='visible'){
+    pullSharedLearning();
+  }
+});
+
+renderCustomModes();
+    if(selectedMode===`custom:${id}`)selectMode('ob');
+    return;
+  }
+
+  const b=e.target.closest('.mode[data-mode]');
+  if(b)selectMode(b.dataset.mode);
+});
+reverseBtn.addEventListener('click',toggleDirection);
+$('translate').addEventListener('click',renderTypedTranslation);
+$('clear').addEventListener('click',()=>{
+  stopSpeaking();input.value='';result.textContent='—';pill.textContent='WAITING';statusEl.textContent='';debug.classList.add('hidden');lastMicRaw='';lastMicKept='';lastObGroups=[];lastObMicEntries=[];lastObMicTranslation='';lastObAudioFingerprint=null;lastObAudioDuration=0;showLearningUI(false);
+});
+
+mic.addEventListener('pointerdown',e=>{
+  if(direction==='decode'&&listening){
+    e.preventDefault();
+    const captured=stopCaptureNow();
+    ignoreClick=true;
+    requestAnimationFrame(()=>setTimeout(()=>processCapture(captured),0));
+  }
+});
+mic.addEventListener('click',async()=>{
+  if(ignoreClick){ignoreClick=false;return}
+
+  if(direction==='encode'){
+    if(window.speechSynthesis?.speaking){
+      stopSpeaking();
+      mic.textContent='🔊';
+      statusEl.textContent='';
+    }else{
+      playReverseOutput();
+    }
+    return;
+  }
+
+  if(listening||processing)return;
+  try{await startRecording()}
+  catch(err){
+    listening=false;processing=false;micarea.classList.remove('listening');mic.textContent='🎤';resetProgress();
+    statusEl.textContent='Could not use the microphone: '+String(err?.message||err);
+  }
+});
+input.addEventListener('input',()=>{lastMicRaw='';lastMicKept='';lastObGroups=[];lastObMicEntries=[];lastObMicTranslation='';lastObAudioFingerprint=null;lastObAudioDuration=0;showLearningUI(false);if(input.value.trim())renderTypedTranslation()});
+crackInput.addEventListener('input',()=>{lastCrackPhonetic='';lastCrackStandard='';});
+
+correctBtn.addEventListener('click',()=>{
+  if(selectedMode!=='ob'||direction!=='decode')return;
+
+  const text=(lastObMicTranslation&&lastObMicTranslation!=='[unclear]')
+    ?lastObMicTranslation
+    :result.textContent.trim();
+
+  if(!text||text==='[unclear]'||text==='—'){
+    fixPanel.classList.remove('hidden');
+    fixInput.focus();
+    return;
+  }
+
+  const learned=learnFromCorrection(text,2.0);
+  learnNote.textContent=learned.learned
+    ?`Learned from ${learned.learned} word${learned.learned===1?'':'s'} in that recording.`
+    :'I saved the confirmation, but could not align enough individual words yet.';
+});
+
+fixBtn.addEventListener('click',()=>{
+  fixPanel.classList.toggle('hidden');
+  if(!fixPanel.classList.contains('hidden')){
+    fixInput.value=(lastObMicTranslation&&lastObMicTranslation!=='[unclear]')?lastObMicTranslation:'';
+    fixInput.focus();
+  }
+});
+
+teachBtn.addEventListener('click',()=>{
+  const correction=fixInput.value.trim();
+  if(!correction){learnNote.textContent='Type what you actually said first.';return}
+
+  const learned=learnFromCorrection(correction,4.5);
+  learnNote.textContent=learned.learned
+    ?(learned.total===1
+      ?`Learned “${correction.trim()}” directly from the raw recording. Try saying it again.`
+      :`Learned ${learned.learned} of ${learned.total} words from this recording.`)
+    :'I could not save a usable audio fingerprint. Record the word again and keep the recording under about 5 seconds.';
+  fixPanel.classList.add('hidden');
+  fixInput.value='';
+});
+
+
+
+crackBtn.addEventListener('click',()=>{
+  const typed=crackInput.value.trim();
+  if(!typed){statusEl.textContent='Add several examples first.';return}
+
+  const sources=[typed];
+  if(lastCrackPhonetic&&lastCrackPhonetic!==typed)sources.push(lastCrackPhonetic);
+  if(lastCrackStandard&&lastCrackStandard!==typed)sources.push(lastCrackStandard);
+
+  const best=bestCrackFromSources(sources);
+  if(!best){statusEl.textContent='I could not find a repeating pattern yet. Add more examples.';return}
+
+  const found=best.found;
+  const lang={id:Date.now().toString(36),name:nextLanguageName(),...found};
+  crackedLanguages.push(lang);saveLanguages(crackedLanguages);renderCustomModes();
+
+  crackInput.value='';lastCrackPhonetic='';lastCrackStandard='';
+  selectMode(`custom:${lang.id}`);
+
+  statusEl.textContent=`Created ${lang.name}.`;
+});
+addInfoBtn.addEventListener('click',()=>{
+  addInfoPanel.classList.toggle('hidden');
+  if(!addInfoPanel.classList.contains('hidden'))addInfoInput.focus();
+});
+improveBtn.addEventListener('click',()=>{
+  if(!selectedMode.startsWith('custom:'))return;
+  const id=selectedMode.split(':')[1],lang=crackedLanguages.find(x=>x.id===id),extra=addInfoInput.value.trim();
+  if(!lang||!extra)return;
+  const filteredExtra=filterCorpusByRule(extra,lang.rule)||extra;
+  const best=bestCrackFromSources([normalizeSpaces((lang.samples||'')+' '+filteredExtra)],lang);
+  if(best)Object.assign(lang,best.found);
+  saveLanguages(crackedLanguages);renderCustomModes();
+  addInfoInput.value='';addInfoPanel.classList.add('hidden');showCustomInfo(id);statusEl.textContent='Language updated.';
+});
+
+// ---------- built-in deterministic self-tests ----------
+function selfTest(){
+  const failures=[];
+  const expect=(name,got,want)=>{if(String(got).toLowerCase()!==String(want).toLowerCase())failures.push(`${name}: ${got} != ${want}`)};
+
+  expect('typed Ob',decodeOb('hobellobo'),'hello');
+  expect('typed sentence',decodeOb('hobellobo hobow obarobe obyoboobu'),'hello how are you');
+  expect('spoken-vowel reverse name',encodeOb('name'),'nobame');
+  expect('spoken-vowel reverse hello',encodeOb('hello'),'hobellobo');
+  expect('A1Z26',decodeA1Z26('8 5 12 12 15'),'hello');
+  expect('ASCII',decodeASCII('104 101 108 108 111'),'hello');
+  expect('T9',decodeT9('43556 469 273 968'),'hello how are you');
+
+  const fake=[
+    {p:'h',start:0,end:.08},
+    {p:'ɑ',start:.08,end:.18},
+    {p:'b',start:.18,end:.25},
+    {p:'ɛ',start:.25,end:.36},
+    {p:'l',start:.36,end:.47},
+    {p:'oʊ',start:.47,end:.58},
+    {p:'b',start:.58,end:.65},
+    {p:'oʊ',start:.65,end:.80}
+  ];
+  const cuts=detectObIntervals(fake);
+  if(cuts.length!==2)failures.push(`phoneme detector: expected 2 cuts, got ${cuts.length}`);
+
+  const synthetic=new Float32Array(16000);
+  for(let i=0;i<synthetic.length;i++)synthetic[i]=Math.sin(i*.03)*.2;
+  const cutAudio=removeTimedIntervals(synthetic,cuts,16000);
+  if(!(cutAudio.length<synthetic.length&&cutAudio.length>4000))failures.push('audio surgery length check');
+
+  const crack=crackLanguage('8 5 12 12 15 13 25 14 1 13 5 9 19 13 9 12 15');
+  if(crack?.rule?.type!=='a1z26')failures.push('numeric cracker failed to detect A1Z26');
+
+  window.__SECRET_TRANSLATOR_SELF_TEST_FAILURES__=failures;
+  if(failures.length){
+    console.error('SELF TEST FAILURES',failures);
+  }else{
+    console.log('Secret Translator self-tests: PASS');
+  }
+}
+
+renderCustomModes();
+seedAdaptiveProfile();
+seedBuiltInAcousticExamples();
+saveAdaptiveProfile({remote:false});
+updateLearningStats();
+selectMode('ob');
+selfTest();
+initSharedLearning();
+const warmOb=()=>getPhoneme().catch(e=>console.warn('Ob model warm-up failed',e));
+if('requestIdleCallback' in window)requestIdleCallback(warmOb,{timeout:1600});else setTimeout(warmOb,900);
+</script>
+</body>
+</html>
